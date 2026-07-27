@@ -32,6 +32,8 @@ import {
 import { loadFont as loadCormorant } from '@remotion/google-fonts/CormorantGaramond';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { buildVideoSwarmConfig, logSwarmInit } from '../lib/ruflo';
+import { NoiseBg } from '../components/NoiseBg';
+import { GradientBg } from '../components/GradientBg';
 
 // ── Ruflo ─────────────────────────────────────────────────────────────────────
 const _swarm = buildVideoSwarmConfig(
@@ -160,6 +162,7 @@ const HairlineWipe: React.FC<HairlineWipeProps> = ({ children }) => {
           backgroundColor: B.accent,
           opacity:         f <= WIPE_DURATION ? 1 : 0,
           pointerEvents:   'none',
+          boxShadow:       '0 0 3px 0px rgba(196, 124, 58, 0.6)',
         }}
       />
     </>
@@ -181,17 +184,19 @@ const HairlineWipe: React.FC<HairlineWipeProps> = ({ children }) => {
 type Motion = 'scale' | 'up' | 'down';
 
 interface PhotoSceneProps {
-  src:             string;
-  motion:          Motion;
-  absoluteOffset?: number;
-  totalFrames?:    number;
+  src:              string;
+  motion:           Motion;
+  absoluteOffset?:  number;
+  totalFrames?:     number;
+  objectPosition?:  string;
 }
 
 const PhotoScene: React.FC<PhotoSceneProps> = ({
   src,
   motion,
-  absoluteOffset = 0,
-  totalFrames    = 120,
+  absoluteOffset  = 0,
+  totalFrames     = 120,
+  objectPosition  = 'center',
 }) => {
   const frame = useCurrentFrame();
   // Absolute frame: allows multi-Sequence continuity
@@ -218,7 +223,7 @@ const PhotoScene: React.FC<PhotoSceneProps> = ({
           width:           '100%',
           height:          '100%',
           objectFit:       'cover',
-          objectPosition:  'center',
+          objectPosition,
           display:         'block',
           // Cinematic treatment: slightly deepened shadows, improved contrast
           filter:          'brightness(0.88) contrast(1.05)',
@@ -238,6 +243,23 @@ const PhotoScene: React.FC<PhotoSceneProps> = ({
     </AbsoluteFill>
   );
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WarmTint
+// Subtle warm color grade overlay for all photo cards — creates visual cohesion.
+// multiply blend darkens & warms shadows without affecting highlights harshly.
+// ─────────────────────────────────────────────────────────────────────────────
+const WarmTint: React.FC = () => (
+  <div
+    style={{
+      position:      'absolute',
+      inset:         0,
+      background:    'rgba(28, 18, 10, 0.12)',
+      mixBlendMode:  'multiply',
+      pointerEvents: 'none',
+    }}
+  />
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TextGradient
@@ -283,6 +305,7 @@ interface LiveCopyProps {
   letterSpacing?: string;
   textAlign?:     React.CSSProperties['textAlign'];
   stagger?:       number;
+  textShadow?:    string;
 }
 
 const LiveCopy: React.FC<LiveCopyProps> = ({
@@ -296,6 +319,7 @@ const LiveCopy: React.FC<LiveCopyProps> = ({
   letterSpacing = '0.005em',
   textAlign     = 'left',
   stagger       = 4,
+  textShadow,
 }) => {
   const f     = useCurrentFrame();
   const lines = Array.isArray(text) ? text : [text];
@@ -322,6 +346,7 @@ const LiveCopy: React.FC<LiveCopyProps> = ({
               display:                 'block',
               WebkitFontSmoothing:     'antialiased',
               MozOsxFontSmoothing:     'grayscale',
+              ...(textShadow ? { textShadow } : {}),
             }}
           >
             {line}
@@ -375,6 +400,12 @@ const BrandIdentityReveal: React.FC<BrandIdentityRevealProps> = ({
         justifyContent:  'center',
       }}
     >
+      {/* Subtle animated depth gradient — barely perceptible, cinematic */}
+      <GradientBg colors={['#111110', '#161512', '#0D0C0A']} speed={0.05} />
+
+      {/* Film grain — cinematic texture on dark ground */}
+      <NoiseBg opacity={0.05} size={200} />
+
       {/* Official icon — appears first */}
       <div
         style={{
@@ -463,12 +494,14 @@ export const LandharLaunchTeaser: React.FC = () => {
           motion="scale"
           absoluteOffset={0}
           totalFrames={210}
+          objectPosition="center 60%"
         />
       </Sequence>
 
       {/* Card 2 text overlay: enters 18 frames after its start (absolute frame 108) */}
       <Sequence from={90} durationInFrames={120}>
         <AbsoluteFill>
+          <WarmTint />
           <TextGradient />
           <div
             style={{
@@ -485,7 +518,7 @@ export const LandharLaunchTeaser: React.FC = () => {
             />
             <div style={{ marginTop: 24 }}>
               {/* Hairline draws after text finishes entering: 18 + 22 = 40 */}
-              <AmberHairline from={42} width={272} />
+              <AmberHairline from={42} width={360} />
             </div>
           </div>
         </AbsoluteFill>
@@ -503,8 +536,10 @@ export const LandharLaunchTeaser: React.FC = () => {
               src="media/rose-bowl-detail.png"
               motion="down"
               totalFrames={120}
+              objectPosition="center 45%"
             />
           </HairlineWipe>
+          <WarmTint />
           <TextGradient />
           <div style={{ position: 'absolute', bottom: 200, left: 80, right: 80 }}>
             <LiveCopy
@@ -528,8 +563,10 @@ export const LandharLaunchTeaser: React.FC = () => {
               src="media/glenmore-stairwell.png"
               motion="up"
               totalFrames={120}
+              objectPosition="center 35%"
             />
           </HairlineWipe>
+          <WarmTint />
           <TextGradient />
           <div style={{ position: 'absolute', bottom: 200, left: 80, right: 80 }}>
             <LiveCopy
@@ -554,8 +591,10 @@ export const LandharLaunchTeaser: React.FC = () => {
               src="media/rose-bowl-dusk.png"
               motion="up"
               totalFrames={120}
+              objectPosition="center 70%"
             />
           </HairlineWipe>
+          <WarmTint />
           <TextGradient height={760} />
           <div style={{ position: 'absolute', bottom: 240, left: 80, right: 80 }}>
             <LiveCopy
@@ -563,6 +602,7 @@ export const LandharLaunchTeaser: React.FC = () => {
               text="Now, it comes into view."
               fontSize={96}
               lineHeight={1.10}
+              textShadow="0 1px 2px rgba(0,0,0,0.4)"
             />
           </div>
         </AbsoluteFill>
