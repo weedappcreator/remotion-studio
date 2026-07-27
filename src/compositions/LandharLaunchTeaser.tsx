@@ -656,12 +656,12 @@ export const LandharLaunchTeaser: React.FC = () => {
       </Sequence>
 
       {/* ── Audio layers ─────────────────────────────────────────────────────── */}
-      {/* Ambient architecture — subtle interior texture */}
-      <Audio src={staticFile('audio/ambient.mp3')} volume={0.12} />
-      {/* Cinematic drone — deep sustained undertone */}
-      <Audio src={staticFile('audio/tone.mp3')} volume={0.06} />
-      {/* ElevenLabs narration with word-level timestamps */}
-      <Audio src={staticFile('audio/landhar-v2.mp3')} startFrom={10} volume={0.9} />
+      {/* NOTE: Audio disabled for local render (macOS 13 compositor workaround)   */}
+      {/* Run: npm run render:landhar-teaser to produce video, then audio is merged */}
+      {/* via ffmpeg post-process. See scripts/render-with-audio.sh                */}
+      {/* <Audio src={staticFile('audio/ambient.mp3')} volume={0.12} />            */}
+      {/* <Audio src={staticFile('audio/tone.mp3')} volume={0.06} />               */}
+      {/* <Audio src={staticFile('audio/landhar-v2.mp3')} startFrom={10} volume={0.9} /> */}
 
     </AbsoluteFill>
   );
