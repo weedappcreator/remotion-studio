@@ -1,14 +1,13 @@
 /**
- * voice-to-video.ts — macOS Dictation + OpenRouter + Resemble AI pipeline
+ * voice-to-video.ts — OpenLess + OpenRouter + Remotion pipeline
  *
  * Flow:
- *   1. Enable macOS Dictation (Fn Fn) → speak → raw text at cursor
- *   2. Copy the raw text (Cmd+A, Cmd+C)
+ *   1. OpenLess: hold hotkey → speak → release → polished text at cursor
+ *   2. Copy that text (Cmd+A, Cmd+C)
  *   3. This watcher detects new clipboard text
- *   4. Sends raw text to OpenRouter (claude-sonnet-4-6) for video script polish
- *   5. Confirms polished script with user
- *   6. Generates Resemble AI voiceover → public/audio/voiceover.wav
- *   7. Prints durationInFrames for Remotion
+ *   4. Sends to OpenRouter (claude-sonnet-4-6) for video script formatting
+ *   5. Writes polished script → src/data/script.json
+ *   6. Remotion Studio hot-reloads and shows the updated text in compositions
  *
  * Usage:
  *   npm run voice-watch
@@ -17,8 +16,9 @@
 
 import { execSync } from 'child_process';
 import * as readline from 'readline';
+import * as fs from 'fs';
+import * as path from 'path';
 import 'dotenv/config';
-import { generateVoiceover } from '../src/lib/voiceover';
 import { buildVoiceInputSwarmConfig, logSwarmInit } from '../src/lib/ruflo';
 
 // ─── Args ─────────────────────────────────────────────────────────────────────
@@ -27,12 +27,17 @@ const SILENT = process.argv.includes('--silent');
 
 // ─── Ruflo swarm init ─────────────────────────────────────────────────────────
 
-const { agents, task } = { ...buildVoiceInputSwarmConfig('voice-to-video clipboard watcher integration'), task: 'voice-to-video clipboard watcher integration' };
+const { agents } = buildVoiceInputSwarmConfig('openless → openrouter → remotion pipeline');
 
 if (!SILENT) {
-  logSwarmInit(agents, 'voice-to-video clipboard watcher integration');
+  logSwarmInit(agents, 'openless → openrouter → remotion pipeline');
   console.log('');
 }
+
+// ─── Script output path ───────────────────────────────────────────────────────
+
+const DATA_DIR = path.join(process.cwd(), 'src', 'data');
+const SCRIPT_PATH = path.join(DATA_DIR, 'script.json');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,11 +45,34 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Polish raw dictated text into a clean video narration script
- * using OpenRouter (claude-sonnet-4-6).
- */
-async function polishWithOpenRouter(rawText: string): Promise<string> {
+function looksLikeCode(text: string): boolean {
+  const markers = [
+    '{', '}', 'import ', 'export ', 'function ', 'const ', 'let ', 'var ',
+    '=>', '()', 'return ', 'class ', '/>', '<div', '<span',
+    '#!/', '```', 'npm ', 'git ', 'cd ', 'curl ',
+  ];
+  return markers.some((m) => text.includes(m));
+}
+
+async function askConfirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      const a = answer.trim().toLowerCase();
+      resolve(a === '' || a === 'y' || a === 'yes');
+    });
+  });
+}
+
+// ─── OpenRouter polish ────────────────────────────────────────────────────────
+
+async function polishWithOpenRouter(raw: string): Promise<{
+  headline: string;
+  subheadline: string;
+  lines: string[];
+  cta: string;
+}> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error('OPENROUTER_API_KEY not set in .env');
 
@@ -62,17 +90,24 @@ async function polishWithOpenRouter(rawText: string): Promise<string> {
       messages: [
         {
           role: 'system',
-          content: `You are a video script editor. The user has spoken a rough voiceover script using macOS Dictation.
-Clean it into natural, spoken-word narration for a video.
+          content: `You are a video script editor. The user spoke a rough script using OpenLess voice input.
+Format it as JSON for a Remotion video composition. Return ONLY valid JSON, no markdown.
+
+Schema:
+{
+  "headline": "short punchy headline, max 5 words",
+  "subheadline": "one sentence elaboration, max 20 words",
+  "lines": ["line1 for kinetic text", "line2", "line3", "line4"],
+  "cta": "call to action button text, max 4 words"
+}
+
 Rules:
-- Keep sentences short (under 15 words each)
-- Remove all filler words: um, uh, like, you know, so, basically, actually
-- Fix grammar and punctuation
-- Maintain a warm, confident, professional tone
-- Output ONLY the cleaned script — no labels, no bullets, no markdown, no explanations
-- Maximum 8 sentences`,
+- headline: bold, impactful, present tense
+- lines: 2-4 short phrases for kinetic typography animation
+- Remove all filler words: um, uh, like, so, basically
+- Warm, confident, professional tone`,
         },
-        { role: 'user', content: rawText },
+        { role: 'user', content: raw },
       ],
       max_tokens: 300,
       temperature: 0.3,
@@ -81,123 +116,83 @@ Rules:
 
   if (!res.ok) throw new Error(`OpenRouter error: ${res.status} ${await res.text()}`);
   const data = await res.json() as { choices: { message: { content: string } }[] };
-  return data.choices[0]?.message?.content?.trim() ?? rawText;
+  const content = data.choices[0]?.message?.content?.trim() ?? '{}';
+
+  // Strip markdown code fences if present
+  const cleaned = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+  return JSON.parse(cleaned);
 }
 
-/**
- * Returns true if the clipboard text looks like code rather than a script.
- * Checks for common code syntax markers.
- */
-function looksLikeCode(text: string): boolean {
-  const codeMarkers = [
-    '{', '}', 'import ', 'export ', 'function ', 'const ', 'let ', 'var ',
-    '=>', '()', '[];', 'return ', 'class ', '/>',  '<div', '<span',
-    '#!/', '```', 'npm ', 'git ', 'cd ', 'curl ', 'http://', 'https://',
-    '.ts', '.js', '.json', '.md',
-  ];
-  return codeMarkers.some((marker) => text.includes(marker));
+// ─── Write to src/data/script.json ───────────────────────────────────────────
+
+function saveScript(script: object): void {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(SCRIPT_PATH, JSON.stringify(script, null, 2));
+  console.log(`[script-formatter] Saved → src/data/script.json`);
 }
 
-/**
- * Prompt the user for a yes/no answer. Returns true for yes (default).
- */
-async function askConfirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      const normalized = answer.trim().toLowerCase();
-      // Default to yes on empty input or 'y'
-      resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
-    });
-  });
-}
+// ─── Handle new clipboard text ────────────────────────────────────────────────
 
-/**
- * Handle a newly detected script from the clipboard.
- */
-async function handleNewScript(script: string): Promise<void> {
-  const preview = script.length > 100 ? script.slice(0, 100) + '…' : script;
-  const wordCount = script.split(/\s+/).filter(Boolean).length;
+async function handleNewScript(raw: string): Promise<void> {
+  const preview = raw.length > 100 ? raw.slice(0, 100) + '…' : raw;
+  const wordCount = raw.split(/\s+/).filter(Boolean).length;
 
   console.log('\n─────────────────────────────────────────────────────');
-  console.log('[voice-researcher] New script detected from clipboard:');
+  console.log('[voice-researcher] New voice input detected:');
   console.log(`  "${preview}"`);
   console.log(`  Words: ${wordCount}`);
   console.log('─────────────────────────────────────────────────────');
 
-  const confirmed = await askConfirm('[Ruflo voice-researcher] Polish with OpenRouter + send to Resemble? [Y/n]: ');
+  const confirmed = await askConfirm('[Ruflo] Format with OpenRouter → push to Remotion? [Y/n]: ');
 
   if (!confirmed) {
-    console.log('[voice-researcher] Skipped. Watching for next script...\n');
+    console.log('[voice-researcher] Skipped.\n');
     return;
   }
 
-  // Step 1 — Polish raw dictation with OpenRouter
-  let polished = script;
   try {
-    polished = await polishWithOpenRouter(script);
-    console.log('\n[script-formatter] Polished script:');
-    console.log(`  "${polished}"`);
-    console.log('');
-  } catch (err: unknown) {
-    console.warn('[script-formatter] Polish failed, using raw text:', (err as Error).message);
-  }
+    const script = await polishWithOpenRouter(raw);
 
-  // Step 2 — Generate voiceover with Resemble AI
-  console.log('[tts-generator] Calling Resemble AI...');
+    console.log('\n[script-formatter] Formatted script:');
+    console.log(`  Headline    : ${script.headline}`);
+    console.log(`  Subheadline : ${script.subheadline}`);
+    console.log(`  Lines       : ${script.lines.join(' / ')}`);
+    console.log(`  CTA         : ${script.cta}`);
 
-  try {
-    const result = await generateVoiceover(polished, 'voiceover');
+    saveScript({ ...script, raw, updatedAt: new Date().toISOString() });
 
-    console.log('\n[timing-validator] Voiceover generated successfully:');
-    console.log(`  Audio path : public/${result.audioPath}`);
-    console.log(`  Duration   : ${result.durationSecs.toFixed(2)}s`);
-    console.log(`  Frames     : ${result.durationFrames} (at 30fps)`);
-    console.log(`  Word count : ${wordCount}`);
-    console.log('');
-    console.log('[timing-validator] Next step:');
-    console.log(`  Update VoiceoverPromo durationInFrames={${result.durationFrames}} in src/Root.tsx`);
-    console.log('  Then run: npm run studio');
+    console.log('\n[timing-validator] Remotion Studio will hot-reload automatically.');
+    console.log('  Open: http://localhost:3001 → KineticTypography or WebsitePromo');
     console.log('─────────────────────────────────────────────────────\n');
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[tts-generator] Error: ${message}`);
-    console.error('Check RESEMBLE_API_KEY, RESEMBLE_PROJECT_UUID, RESEMBLE_VOICE_UUID in .env\n');
+    console.error('[script-formatter] Error:', (err as Error).message);
   }
 }
 
-// ─── Main clipboard watcher loop ──────────────────────────────────────────────
+// ─── Clipboard watcher loop ───────────────────────────────────────────────────
 
 let lastClip = '';
 
 async function watchClipboard(): Promise<void> {
-  console.log('[voice-to-video] Watching clipboard for voice scripts...');
-  console.log('[voice-to-video] Press Fn Fn → speak → stop → Cmd+A Cmd+C → confirm here.');
-  console.log('[voice-to-video] Pipeline: macOS Dictation → OpenRouter polish → Resemble AI TTS → Remotion');
-  console.log('[voice-to-video] Press Ctrl+C to stop.\n');
+  console.log('[voice-to-video] Ready. Pipeline: OpenLess → OpenRouter → Remotion');
+  console.log('[voice-to-video] Hold OpenLess hotkey → speak → release → Cmd+A Cmd+C → confirm here.');
+  console.log('[voice-to-video] Ctrl+C to stop.\n');
 
   while (true) {
     try {
       const current = execSync('pbpaste').toString().trim();
-
-      if (
-        current !== lastClip &&
-        current.length > 20 &&
-        !looksLikeCode(current)
-      ) {
+      if (current !== lastClip && current.length > 20 && !looksLikeCode(current)) {
         lastClip = current;
         await handleNewScript(current);
       }
     } catch {
-      // pbpaste can occasionally fail if clipboard is empty or binary — ignore
+      // clipboard empty or binary — ignore
     }
-
     await sleep(500);
   }
 }
 
 watchClipboard().catch((err) => {
-  console.error('[voice-to-video] Fatal error:', err);
+  console.error('[voice-to-video] Fatal:', err);
   process.exit(1);
 });
