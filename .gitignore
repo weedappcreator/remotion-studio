@@ -1,5 +1,9 @@
 node_modules/
 out/
 dist/
+.env
 *.mp4
 *.webm
+*.wav
+public/audio/*.wav
+public/audio/*.json

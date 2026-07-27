@@ -7,7 +7,11 @@
     "studio": "remotion studio src/index.ts",
     "render:logo": "remotion render src/index.ts LogoReveal --output out/logo-reveal.mp4",
     "render:kinetic": "remotion render src/index.ts KineticTypography --output out/kinetic.mp4",
-    "render:promo": "remotion render src/index.ts WebsitePromo --output out/promo.mp4"
+    "render:promo": "remotion render src/index.ts WebsitePromo --output out/promo.mp4",
+    "render:voiceover": "remotion render src/index.ts VoiceoverPromo --output out/voiceover-promo.mp4",
+    "voiceover": "tsx scripts/generate-voiceover.ts",
+    "voiceover:logo": "tsx scripts/generate-voiceover.ts logo",
+    "voiceover:kinetic": "tsx scripts/generate-voiceover.ts kinetic"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +25,7 @@
     "@remotion/player": "^4.0.499",
     "@remotion/shapes": "^4.0.499",
     "@remotion/transitions": "^4.0.499",
+    "@resemble/node": "^3.5.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "react": "^19.2.8",
@@ -28,5 +33,9 @@
     "remotion": "^4.0.499",
     "typescript": "5.8.3",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "tsx": "^4.23.1"
   }
 }
