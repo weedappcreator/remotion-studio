@@ -1,0 +1,59 @@
+name: Render Remotion Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      composition:
+        description: 'Composition to render'
+        required: true
+        default: 'LandharLaunchTeaser'
+        type: choice
+        options:
+          - LandharLaunchTeaser
+          - LogoReveal
+          - KineticTypography
+          - WebsitePromo
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install Chrome dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+            libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libgbm1 libasound2
+
+      - name: Write secrets to .env
+        run: |
+          echo "ELEVENLABS_API_KEY=${{ secrets.ELEVENLABS_API_KEY }}" >> .env
+          echo "OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}" >> .env
+
+      - name: Generate TTS narration (Landhar only)
+        if: ${{ github.event.inputs.composition == 'LandharLaunchTeaser' }}
+        run: npx tsx scripts/tts.ts landhar
+
+      - name: Render video
+        run: |
+          npx remotion render src/index.ts ${{ github.event.inputs.composition }} \
+            --output out/${{ github.event.inputs.composition }}.mp4 \
+            --log=verbose
+
+      - name: Upload video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.composition }}
+          path: out/${{ github.event.inputs.composition }}.mp4
+          retention-days: 7
