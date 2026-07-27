@@ -282,109 +282,109 @@ const Card5: React.FC = () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 6 — frames 570–659
-// Pure #111110. Logo reveals as ONE complete asset.
-// Opacity 0→1 + scale 0.995→1 over 20 frames starting at relative frame 18.
-// Complete stillness after frame 38.
+// Pure #111110. Logo fades in as one complete asset.
+// Flex column centered — no pixel math, no absolute positioning guesswork.
+//
+// Remotion skill rule: use flexbox for multi-element end cards.
+// LHH branding: logo as sole element, centered, restrained.
 // ─────────────────────────────────────────────────────────────────────────────
-// Logo PNG is 8492×5902px, displayed at 540px wide → actual render height ≈ 375px
-// At 36% top on 1920px frame: center = 691px, bottom edge = 691 + 187.5 = 878.5px
-// Amber line container placed at calc(36% + 236px) = 878.5 + 48px gap = 926.5px from top
-const LOGO_TOP_PCT = 36; // % from top — repositioned so logo bottom clears amber line
-
 const Card6: React.FC = () => {
-  const f = useCurrentFrame();
+  const f  = useCurrentFrame();
   const lf = Math.max(0, f - 18);
   const logoOp    = interpolate(lf, [0, 20], [0, 1],     { ...CL, easing: E_TEXT });
   const logoScale = interpolate(lf, [0, 20], [0.995, 1], { ...CL, easing: E_TEXT });
 
   return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
+    <AbsoluteFill style={{
+      backgroundColor: BG,
+      display:         'flex',
+      flexDirection:   'column',
+      alignItems:      'center',
+      justifyContent:  'center',
+    }}>
+      {/* Official logo — one complete asset, 400px wide */}
+      {/* Width reduced from 540→400 so wordmark reads cleanly on 1080px frame */}
       <div style={{
-        position: 'absolute',
-        top:       `${LOGO_TOP_PCT}%`,
-        left:      '50%',
-        transform: `translate(-50%, -50%) scale(${logoScale})`,
+        opacity:         logoOp,
+        transform:       `scale(${logoScale})`,
         transformOrigin: 'center center',
-        opacity:   logoOp,
       }}>
-        <Img src={staticFile(PHOTOS.logo)}
-          style={{ width: 540, height: 'auto', display: 'block' }} />
+        <Img
+          src={staticFile(PHOTOS.logo)}
+          style={{ width: 400, height: 'auto', display: 'block' }}
+        />
       </div>
     </AbsoluteFill>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CARD 7 — frames 660–749
-// Logo holds in exact same position. No motion.
-// Amber 1px line draws beneath logo.
-// Tagline appears below amber line — no overlap with logo.
+// CARD 7 — frames 660–783 (extended to fit full 07-location.mp3 narration)
+// ONE flex column: logo (static) → amber line → tagline.
+// Zero pixel math. Each element stacks naturally with defined gaps.
+//
+// LHH typography:
+//   Logo    — official PNG, 400px wide, unchanged
+//   Line    — 1px #C47C3A, 180px, scaleX reveal
+//   Tagline — Inter Regular 400, 36px, #ECE9E2, center aligned
 // ─────────────────────────────────────────────────────────────────────────────
 const Card7: React.FC = () => {
   const f = useCurrentFrame();
 
-  // Amber line: scaleX 0→1 over 18 frames from relative frame 8
+  // Amber line draws at relative frame 8, over 18 frames
   const lineF     = Math.max(0, f - 8);
   const lineScale = interpolate(lineF, [0, 18], [0, 1], { ...CL, easing: E_TEXT });
 
-  // Tagline: fades in 8 frames after line starts
-  const { opacity: tagOp, ty: tagTy } = useTextReveal(f, 16);
+  // Tagline enters at relative frame 20 (8f after line starts + 12f stagger)
+  const { opacity: tagOp, ty: tagTy } = useTextReveal(f, 20);
 
   return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
-      {/* Logo — held completely static at identical position to Card 6 */}
-      <div style={{
-        position: 'absolute',
-        top:      `${LOGO_TOP_PCT}%`,
-        left:     '50%',
-        transform: 'translate(-50%, -50%)',
-        opacity:   1,
-      }}>
-        <Img src={staticFile(PHOTOS.logo)}
-          style={{ width: 540, height: 'auto', display: 'block' }} />
-      </div>
+    <AbsoluteFill style={{
+      backgroundColor: BG,
+      display:         'flex',
+      flexDirection:   'column',
+      alignItems:      'center',
+      justifyContent:  'center',
+      // Nudge group slightly above mathematical center — optically correct
+      paddingBottom:   80,
+    }}>
+      {/* Logo — identical to Card 6, fully static */}
+      <Img
+        src={staticFile(PHOTOS.logo)}
+        style={{ width: 400, height: 'auto', display: 'block' }}
+      />
 
-      {/* Amber line + tagline — anchored BELOW logo, not at logo center */}
-      {/* Logo PNG: 8492×5902px → at 540px wide, render height ≈ 375px */}
-      {/* Logo center at 36% of 1920 = 691px. Half-height = 187.5px. Bottom edge ≈ 879px. */}
-      {/* Container starts at 879px + 48px gap = 927px from top = calc(36% + 236px) */}
-      <div style={{
-        position:       'absolute',
-        top:            `calc(${LOGO_TOP_PCT}% + 236px)`,
-        left:           '50%',
-        transform:      'translateX(-50%)',
-        display:        'flex',
-        flexDirection:  'column',
-        alignItems:     'center',
-        gap:            24,
-        width:          820,
-      }}>
-        {/* 1px amber hairline — scaleX 0→1 from left */}
-        <div style={{
-          width:           220,
-          height:          1,
-          backgroundColor: ACCENT,
-          transform:       `scaleX(${lineScale})`,
-          transformOrigin: 'left center',
-          alignSelf:       'center',
-        }} />
+      {/* 40px breathing room between logo and amber line */}
+      <div style={{ height: 40 }} />
 
-        {/* Tagline — Inter Regular 44px */}
-        <div style={{
-          fontFamily:          INTER,
-          fontWeight:          400,
-          fontSize:            44,
-          lineHeight:          1.25,
-          letterSpacing:       '0',
-          color:               TEXT,
-          textAlign:           'center',
-          maxWidth:            820,
-          opacity:             tagOp,
-          transform:           `translateY(${tagTy}px)`,
-          WebkitFontSmoothing: 'antialiased',
-        }}>
-          Custom homes, commissioned across Greater Sydney.
-        </div>
+      {/* 1px amber hairline — scaleX 0→1, centered */}
+      <div style={{
+        width:           180,
+        height:          1,
+        backgroundColor: ACCENT,
+        transform:       `scaleX(${lineScale})`,
+        transformOrigin: 'center center',
+      }} />
+
+      {/* 28px gap between amber line and tagline */}
+      <div style={{ height: 28 }} />
+
+      {/* Tagline — Inter Regular — LHH branding: clean, precise, not decorative */}
+      <div style={{
+        opacity:             tagOp,
+        transform:           `translateY(${tagTy}px)`,
+        fontFamily:          INTER,
+        fontWeight:          400,
+        fontSize:            36,
+        lineHeight:          1.35,
+        letterSpacing:       '0.01em',
+        color:               TEXT,
+        textAlign:           'center',
+        maxWidth:            760,
+        WebkitFontSmoothing: 'antialiased',
+        MozOsxFontSmoothing: 'grayscale',
+      }}>
+        Custom homes, commissioned across Greater Sydney.
       </div>
     </AbsoluteFill>
   );
