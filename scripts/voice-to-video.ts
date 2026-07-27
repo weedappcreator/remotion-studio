@@ -1,9 +1,14 @@
 /**
- * voice-to-video.ts — OpenLess clipboard watcher
+ * voice-to-video.ts — macOS Dictation + OpenRouter + Resemble AI pipeline
  *
- * Polls the macOS clipboard every 500ms for new text that looks like a
- * video script (polished by OpenLess). When detected, asks for confirmation
- * and then auto-generates a Resemble AI voiceover + prints Remotion frame info.
+ * Flow:
+ *   1. Enable macOS Dictation (Fn Fn) → speak → raw text at cursor
+ *   2. Copy the raw text (Cmd+A, Cmd+C)
+ *   3. This watcher detects new clipboard text
+ *   4. Sends raw text to OpenRouter (claude-sonnet-4-6) for video script polish
+ *   5. Confirms polished script with user
+ *   6. Generates Resemble AI voiceover → public/audio/voiceover.wav
+ *   7. Prints durationInFrames for Remotion
  *
  * Usage:
  *   npm run voice-watch
@@ -33,6 +38,50 @@ if (!SILENT) {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Polish raw dictated text into a clean video narration script
+ * using OpenRouter (claude-sonnet-4-6).
+ */
+async function polishWithOpenRouter(rawText: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not set in .env');
+
+  console.log('[script-formatter] Polishing with OpenRouter (claude-sonnet-4-6)...');
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://github.com/weedappcreator/remotion-studio',
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-sonnet-4-6',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a video script editor. The user has spoken a rough voiceover script using macOS Dictation.
+Clean it into natural, spoken-word narration for a video.
+Rules:
+- Keep sentences short (under 15 words each)
+- Remove all filler words: um, uh, like, you know, so, basically, actually
+- Fix grammar and punctuation
+- Maintain a warm, confident, professional tone
+- Output ONLY the cleaned script — no labels, no bullets, no markdown, no explanations
+- Maximum 8 sentences`,
+        },
+        { role: 'user', content: rawText },
+      ],
+      max_tokens: 300,
+      temperature: 0.3,
+    }),
+  });
+
+  if (!res.ok) throw new Error(`OpenRouter error: ${res.status} ${await res.text()}`);
+  const data = await res.json() as { choices: { message: { content: string } }[] };
+  return data.choices[0]?.message?.content?.trim() ?? rawText;
 }
 
 /**
@@ -77,17 +126,29 @@ async function handleNewScript(script: string): Promise<void> {
   console.log(`  Words: ${wordCount}`);
   console.log('─────────────────────────────────────────────────────');
 
-  const confirmed = await askConfirm('[Ruflo voice-researcher] Detected script — use as voiceover? [Y/n]: ');
+  const confirmed = await askConfirm('[Ruflo voice-researcher] Polish with OpenRouter + send to Resemble? [Y/n]: ');
 
   if (!confirmed) {
     console.log('[voice-researcher] Skipped. Watching for next script...\n');
     return;
   }
 
-  console.log('\n[tts-generator] Calling Resemble AI...');
+  // Step 1 — Polish raw dictation with OpenRouter
+  let polished = script;
+  try {
+    polished = await polishWithOpenRouter(script);
+    console.log('\n[script-formatter] Polished script:');
+    console.log(`  "${polished}"`);
+    console.log('');
+  } catch (err: unknown) {
+    console.warn('[script-formatter] Polish failed, using raw text:', (err as Error).message);
+  }
+
+  // Step 2 — Generate voiceover with Resemble AI
+  console.log('[tts-generator] Calling Resemble AI...');
 
   try {
-    const result = await generateVoiceover(script, 'voiceover');
+    const result = await generateVoiceover(polished, 'voiceover');
 
     console.log('\n[timing-validator] Voiceover generated successfully:');
     console.log(`  Audio path : public/${result.audioPath}`);
@@ -112,7 +173,8 @@ let lastClip = '';
 
 async function watchClipboard(): Promise<void> {
   console.log('[voice-to-video] Watching clipboard for voice scripts...');
-  console.log('[voice-to-video] Hold your OpenLess hotkey → speak → release → confirm here.');
+  console.log('[voice-to-video] Press Fn Fn → speak → stop → Cmd+A Cmd+C → confirm here.');
+  console.log('[voice-to-video] Pipeline: macOS Dictation → OpenRouter polish → Resemble AI TTS → Remotion');
   console.log('[voice-to-video] Press Ctrl+C to stop.\n');
 
   while (true) {
