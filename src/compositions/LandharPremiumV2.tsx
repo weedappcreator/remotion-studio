@@ -23,6 +23,17 @@
  *    → actual height ≈ 375px. Amber line container now at calc(36% + 236px) which places
  *    it 48px below the logo bottom edge.
  *  - Total duration updated to 784 frames (was 750)
+ *
+ * v4 (professional rebuild):
+ *  - Font switched from Cormorant Garamond to Playfair Display 700
+ *    (much thicker strokes — readable on bright Cards 2+3)
+ *  - Per-card IMG_FILTER: Cards 2+3 get significantly darker treatment
+ *  - Stronger LegibilityGradient: 0.88 at 0%, multi-stop, 900px height
+ *  - Per-card objectPosition tuned to show darker zones in text area
+ *  - Text color: pure #FFFFFF (max contrast, not ivory #ECE9E2)
+ *  - textShadow upgraded: 0 2px 12px rgba(0,0,0,0.5)
+ *  - letterSpacing: -0.5px (Playfair has stronger strokes, less negative needed)
+ *  - lineHeight: 1.0 (Playfair's robust letterforms handle tighter leading)
  */
 
 import React from 'react';
@@ -36,22 +47,35 @@ import {
   staticFile,
   useCurrentFrame,
 } from 'remotion';
-import { loadFont as loadCormorant } from '@remotion/google-fonts/CormorantGaramond';
+import { loadFont as loadPlayfair } from '@remotion/google-fonts/PlayfairDisplay';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { buildVideoSwarmConfig, logSwarmInit } from '../lib/ruflo';
 
 // ── Ruflo ─────────────────────────────────────────────────────────────────────
-const _swarm = buildVideoSwarmConfig('LandharPremiumV2 — architectural editorial film v2 fixed');
+const _swarm = buildVideoSwarmConfig('LandharPremiumV2 — professional rebuild: Playfair Display 700, per-card brightness, stronger gradient');
 logSwarmInit(_swarm.agents, 'LandharPremiumV2');
 
 // ── Fonts ─────────────────────────────────────────────────────────────────────
-const { fontFamily: CORMORANT } = loadCormorant('normal', { weights: ['500'], subsets: ['latin'] });
-const { fontFamily: INTER }     = loadInter('normal',     { weights: ['400'], subsets: ['latin'] });
+// Playfair Display 700 — editorial serif with thick strokes, far more legible
+// on bright backgrounds than Cormorant Garamond at any weight.
+const { fontFamily: DISPLAY } = loadPlayfair('normal', { weights: ['700'], subsets: ['latin'] });
+const { fontFamily: INTER }   = loadInter('normal',   { weights: ['400'], subsets: ['latin'] });
 
 // ── Brand ─────────────────────────────────────────────────────────────────────
 const BG     = '#111110';
-const TEXT   = '#ECE9E2';
+const TEXT   = '#ECE9E2'; // Card 7 tagline only — on dark bg, fine
 const ACCENT = '#C47C3A'; // amber — Card 7 hairline ONLY
+
+// ── Per-card image filters ────────────────────────────────────────────────────
+// Tuned per background brightness. Cards 2+3 get aggressive darkening because
+// the Turramurra interior and marble bathroom are both very light scenes.
+const FILTER = {
+  card1:      'brightness(0.88) contrast(1.04)', // dark hardwood floor — subtle
+  turramurra: 'brightness(0.72) contrast(1.06)', // bright white interior — significantly darker
+  bathroom:   'brightness(0.65) contrast(1.10)', // light marble — most aggressive
+  chandelier: 'brightness(0.85) contrast(1.05)', // dark chandelier — subtle
+  dusk:       'brightness(0.82) contrast(1.04)', // dusk exterior — subtle
+};
 
 // ── Easing ───────────────────────────────────────────────────────────────────
 const E_IMG  = Easing.bezier(0.45, 0, 0.55, 1); // photo motion
@@ -78,7 +102,6 @@ const AUDIO = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const IMG_FILTER = 'brightness(0.92) contrast(1.04)';
 
 /** Shared text reveal: opacity 0→1 + translateY 8→0 over 20 frames */
 function useTextReveal(localFrame: number, from: number) {
@@ -96,36 +119,29 @@ function useTextExit(localFrame: number, from: number) {
 
 // ── LegibilityGradient ────────────────────────────────────────────────────────
 // Stronger gradient — covers Cards 2+3 which have bright photo backgrounds.
-// Multi-stop: very dark at bottom, gentle fade to transparent.
-const LegibilityGradient: React.FC<{ height?: number }> = ({ height = 780 }) => (
+// Multi-stop: 0.88 at base, gentle fade to transparent at 70%. 900px height.
+const LegibilityGradient: React.FC<{ height?: number }> = ({ height = 900 }) => (
   <div style={{
     position: 'absolute', bottom: 0, left: 0, right: 0, height,
-    background: [
-      'linear-gradient(to top,',
-      '  rgba(10,10,9,0.85) 0%,',
-      '  rgba(10,10,9,0.70) 18%,',
-      '  rgba(10,10,9,0.42) 38%,',
-      '  rgba(10,10,9,0.14) 58%,',
-      '  rgba(10,10,9,0) 75%',
-      ')',
-    ].join(''),
+    background: 'linear-gradient(to top, rgba(8,8,7,0.88) 0%, rgba(8,8,7,0.72) 15%, rgba(8,8,7,0.45) 35%, rgba(8,8,7,0.15) 55%, rgba(8,8,7,0) 70%)',
     pointerEvents: 'none',
   }} />
 );
 
 // ── Display text style ────────────────────────────────────────────────────────
-// textShadow added for legibility on bright backgrounds (Cards 2, 3).
-// Very subtle — 1px blur only. Not decorative.
-const displayStyle = (size: number, lineH: number = 0.94): React.CSSProperties => ({
-  fontFamily:    CORMORANT,
-  fontWeight:    500,
-  fontSize:      size,
-  lineHeight:    lineH,
-  letterSpacing: '-1.5px',
-  color:         TEXT,
-  textShadow:    '0 1px 8px rgba(0,0,0,0.65)',
-  margin:        0,
-  padding:       0,
+// Playfair Display 700 — thick strokes, readable on any background.
+// Pure #FFFFFF for maximum contrast (not ivory — ivory fails on near-white photos).
+// textShadow upgraded to 12px blur for cards with bright backgrounds.
+const displayStyle = (size: number, lineH = 1.0): React.CSSProperties => ({
+  fontFamily:          DISPLAY,
+  fontWeight:          700,
+  fontSize:            size,
+  lineHeight:          lineH,
+  letterSpacing:       '-0.5px',
+  color:               '#FFFFFF',
+  textShadow:          '0 2px 12px rgba(0,0,0,0.5)',
+  margin:              0,
+  padding:             0,
   WebkitFontSmoothing: 'antialiased',
 });
 
@@ -144,7 +160,7 @@ const Card1: React.FC = () => {
       <Img
         src={staticFile(PHOTOS.turramurra)}
         style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }}
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.card1 }}
       />
     </AbsoluteFill>
   );
@@ -153,6 +169,7 @@ const Card1: React.FC = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 2 — frames 90–209
 // Continuous Turramurra motion. Text enters at relative frame 20.
+// objectPosition: 'center 55%' — shows more dark floor at bottom where text lives.
 // ─────────────────────────────────────────────────────────────────────────────
 const Card2: React.FC = () => {
   const f    = useCurrentFrame();
@@ -169,13 +186,13 @@ const Card2: React.FC = () => {
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
       <Img
         src={staticFile(PHOTOS.turramurra)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 55%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.turramurra }}
       />
       <LegibilityGradient />
       <div style={{ position: 'absolute', left: 90, bottom: 200, maxWidth: 760,
         opacity: finalOp, transform: `translateY(${finalTy}px)` }}>
-        <p style={displayStyle(112)}>
+        <p style={displayStyle(96)}>
           Every commission.<br />One standard.
         </p>
       </div>
@@ -192,8 +209,8 @@ const Card2Frozen: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: op }}>
       <Img src={staticFile(PHOTOS.turramurra)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 55%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.turramurra }} />
     </AbsoluteFill>
   );
 };
@@ -202,6 +219,7 @@ const Card2Frozen: React.FC = () => {
 // CARD 3 — frames 210–329
 // Rose Bowl bathroom detail. 8-frame dissolve in.
 // THREE-LINE BLOCK revealed as ONE (no stagger).
+// objectPosition: 'center 65%' — shows dark cabinet base at bottom (text zone).
 // ─────────────────────────────────────────────────────────────────────────────
 const Card3: React.FC = () => {
   const f = useCurrentFrame();
@@ -217,13 +235,13 @@ const Card3: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: dissolveIn }}>
       <Img src={staticFile(PHOTOS.bathroom)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 35%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 65%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.bathroom }} />
       <LegibilityGradient />
       <div style={{ position: 'absolute', left: 90, bottom: 200, maxWidth: 760,
         opacity: finalOp, transform: `translateY(${finalTy}px)` }}>
         {/* ONE BLOCK — zero stagger per v2 brief */}
-        <p style={displayStyle(106)}>
+        <p style={displayStyle(88)}>
           Uncompromising.<br />Considered.<br />Crafted.
         </p>
       </div>
@@ -234,6 +252,7 @@ const Card3: React.FC = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // CARD 4 — frames 330–449
 // Glenmore Park chandelier. Hard cut. ABSOLUTELY NO TEXT.
+// objectPosition: 'center 25%' — emphasises chandelier high in frame.
 // ─────────────────────────────────────────────────────────────────────────────
 const Card4: React.FC = () => {
   const f = useCurrentFrame();
@@ -243,8 +262,8 @@ const Card4: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
       <Img src={staticFile(PHOTOS.chandelier)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.chandelier }} />
       {/* NO gradient, NO text, NO overlay — Card 4 is image only per v2 brief */}
     </AbsoluteFill>
   );
@@ -259,8 +278,8 @@ const Card4Frozen: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: op }}>
       <Img src={staticFile(PHOTOS.chandelier)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%',
-          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 25%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: FILTER.chandelier }} />
     </AbsoluteFill>
   );
 };
@@ -269,6 +288,7 @@ const Card4Frozen: React.FC = () => {
 // CARD 5 — frames 450–569
 // Rose Bowl dusk exterior. 10-frame dissolve in. Pivotal line.
 // Nearly static — 2% scale push only.
+// objectPosition: 'center 72%' — house stays anchored low.
 // ─────────────────────────────────────────────────────────────────────────────
 const Card5: React.FC = () => {
   const f = useCurrentFrame();
@@ -280,12 +300,12 @@ const Card5: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: dissolveIn }}>
       <Img src={staticFile(PHOTOS.dusk)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 70%',
-          transform: `scale(${scale})`, filter: IMG_FILTER }} />
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 72%',
+          transform: `scale(${scale})`, filter: FILTER.dusk }} />
       <LegibilityGradient />
       <div style={{ position: 'absolute', left: 90, bottom: 220, maxWidth: 760,
         opacity, transform: `translateY(${textTy}px)` }}>
-        <p style={displayStyle(108, 0.96)}>
+        <p style={displayStyle(108, 1.0)}>
           Now, it comes into view.
         </p>
       </div>
@@ -339,7 +359,7 @@ const Card6: React.FC = () => {
 // LHH typography:
 //   Logo    — official PNG, 400px wide, unchanged
 //   Line    — 1px #C47C3A, 180px, scaleX reveal
-//   Tagline — Inter Regular 400, 36px, #ECE9E2, center aligned
+//   Tagline — Inter Regular 400, 36px, #ECE9E2, center aligned (on dark bg — fine)
 // ─────────────────────────────────────────────────────────────────────────────
 const Card7: React.FC = () => {
   const f = useCurrentFrame();
@@ -383,6 +403,7 @@ const Card7: React.FC = () => {
       <div style={{ height: 28 }} />
 
       {/* Tagline — Inter Regular — LHH branding: clean, precise, not decorative */}
+      {/* Color: #ECE9E2 (ivory) — on dark #111110 bg this has excellent contrast */}
       <div style={{
         opacity:             tagOp,
         transform:           `translateY(${tagTy}px)`,
