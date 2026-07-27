@@ -95,15 +95,27 @@ function useTextExit(localFrame: number, from: number) {
 }
 
 // ── LegibilityGradient ────────────────────────────────────────────────────────
-const LegibilityGradient: React.FC = () => (
+// Stronger gradient — covers Cards 2+3 which have bright photo backgrounds.
+// Multi-stop: very dark at bottom, gentle fade to transparent.
+const LegibilityGradient: React.FC<{ height?: number }> = ({ height = 780 }) => (
   <div style={{
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 560,
-    background: 'linear-gradient(to top, rgba(17,17,16,0.52) 0%, rgba(17,17,16,0.16) 42%, rgba(17,17,16,0) 68%)',
+    position: 'absolute', bottom: 0, left: 0, right: 0, height,
+    background: [
+      'linear-gradient(to top,',
+      '  rgba(10,10,9,0.85) 0%,',
+      '  rgba(10,10,9,0.70) 18%,',
+      '  rgba(10,10,9,0.42) 38%,',
+      '  rgba(10,10,9,0.14) 58%,',
+      '  rgba(10,10,9,0) 75%',
+      ')',
+    ].join(''),
     pointerEvents: 'none',
   }} />
 );
 
 // ── Display text style ────────────────────────────────────────────────────────
+// textShadow added for legibility on bright backgrounds (Cards 2, 3).
+// Very subtle — 1px blur only. Not decorative.
 const displayStyle = (size: number, lineH: number = 0.94): React.CSSProperties => ({
   fontFamily:    CORMORANT,
   fontWeight:    500,
@@ -111,6 +123,7 @@ const displayStyle = (size: number, lineH: number = 0.94): React.CSSProperties =
   lineHeight:    lineH,
   letterSpacing: '-1.5px',
   color:         TEXT,
+  textShadow:    '0 1px 8px rgba(0,0,0,0.65)',
   margin:        0,
   padding:       0,
   WebkitFontSmoothing: 'antialiased',
