@@ -22,7 +22,12 @@
     "tts:landhar": "tsx scripts/tts.ts landhar",
     "tts:magazine": "tsx scripts/tts.ts magazine",
     "tts:slowburn": "tsx scripts/tts.ts slowburn",
-    "tts:all": "npm run tts:landhar && npm run tts:magazine && npm run tts:slowburn"
+    "tts:all": "npm run tts:landhar && npm run tts:magazine && npm run tts:slowburn",
+    "tts:landhar-v2": "tsx scripts/tts.ts landhar-v2",
+    "tts:magazine-v2": "tsx scripts/tts.ts magazine-v2",
+    "tts:slowburn-v2": "tsx scripts/tts.ts slowburn-v2",
+    "tts:all-v2": "npm run tts:landhar-v2 && npm run tts:magazine-v2 && npm run tts:slowburn-v2",
+    "sound": "tsx scripts/sound-design.ts"
   },
   "keywords": [],
   "author": "",
