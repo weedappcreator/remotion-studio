@@ -17,7 +17,9 @@
     "render:landhar": "remotion render src/index.ts LandharRebrand --output out/landhar-rebrand.mp4",
     "render:landhar-teaser": "remotion render src/index.ts LandharLaunchTeaser --output out/landhar-launch-teaser.mp4",
     "record": "tsx scripts/record-narration.ts voiceover",
-    "record:landhar": "tsx scripts/record-narration.ts landhar"
+    "record:landhar": "tsx scripts/record-narration.ts landhar",
+    "tts": "tsx scripts/tts.ts promo",
+    "tts:landhar": "tsx scripts/tts.ts landhar"
   },
   "keywords": [],
   "author": "",
