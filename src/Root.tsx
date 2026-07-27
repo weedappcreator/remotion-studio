@@ -7,6 +7,7 @@ import { LandharRebrand } from './compositions/LandharRebrand';
 import { LandharLaunchTeaser } from './compositions/LandharLaunchTeaser';
 import { LandharSlowBurn } from './compositions/LandharSlowBurn';
 import { LandharMagazine } from './compositions/LandharMagazine';
+import { LandharPremiumV2 } from './compositions/LandharPremiumV2';
 
 // Live script — updated by `npm run voice-watch` via OpenLess → OpenRouter
 // Remotion Studio hot-reloads whenever this file changes
@@ -105,6 +106,15 @@ export const RemotionRoot: React.FC = () => {
         id="LandharMagazine"
         component={LandharMagazine}
         durationInFrames={810}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{}}
+      />
+      <Composition
+        id="LandharPremiumV2"
+        component={LandharPremiumV2}
+        durationInFrames={750}
         fps={30}
         width={1080}
         height={1920}
