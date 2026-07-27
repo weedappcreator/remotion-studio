@@ -11,7 +11,9 @@
     "render:voiceover": "remotion render src/index.ts VoiceoverPromo --output out/voiceover-promo.mp4",
     "voiceover": "tsx scripts/generate-voiceover.ts",
     "voiceover:logo": "tsx scripts/generate-voiceover.ts logo",
-    "voiceover:kinetic": "tsx scripts/generate-voiceover.ts kinetic"
+    "voiceover:kinetic": "tsx scripts/generate-voiceover.ts kinetic",
+    "voice-watch": "tsx scripts/voice-to-video.ts",
+    "voice-watch:silent": "tsx scripts/voice-to-video.ts --silent"
   },
   "keywords": [],
   "author": "",
