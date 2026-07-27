@@ -114,7 +114,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="LandharPremiumV2"
         component={LandharPremiumV2}
-        durationInFrames={750}
+        durationInFrames={784}
         fps={30}
         width={1080}
         height={1920}

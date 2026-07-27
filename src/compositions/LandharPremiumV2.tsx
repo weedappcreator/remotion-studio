@@ -3,7 +3,7 @@
  *
  * Format : 1080 × 1920 (vertical)
  * FPS    : 30
- * Length : 750 frames / 25 seconds
+ * Length : 784 frames / 26.13 seconds
  *
  * v2 fixes applied:
  *  - Clean photos without baked text
@@ -14,6 +14,15 @@
  *  - Card 4: truly NO text
  *  - Font: Cormorant Garamond 500, Inter 400
  *  - Text: translateY 8px → 0 only
+ *
+ * v3 fixes:
+ *  - Card 7 extended to 124 frames: 07-location.mp3 is 2.79s (84 frames at 30fps)
+ *    + 10 frame audio delay = 94 frames needed before audio ends, +30 hold = 124 frames
+ *  - Card 7 layout: logo repositioned to 36% (was 38%) so bottom edge clears before
+ *    amber line container. Logo PNG is 8492×5902 (aspect ~1.44:1), displayed at 540px wide
+ *    → actual height ≈ 375px. Amber line container now at calc(36% + 236px) which places
+ *    it 48px below the logo bottom edge.
+ *  - Total duration updated to 784 frames (was 750)
  */
 
 import React from 'react';
@@ -277,7 +286,10 @@ const Card5: React.FC = () => {
 // Opacity 0→1 + scale 0.995→1 over 20 frames starting at relative frame 18.
 // Complete stillness after frame 38.
 // ─────────────────────────────────────────────────────────────────────────────
-const LOGO_TOP_PCT = 38; // % from top — optically above center
+// Logo PNG is 8492×5902px, displayed at 540px wide → actual render height ≈ 375px
+// At 36% top on 1920px frame: center = 691px, bottom edge = 691 + 187.5 = 878.5px
+// Amber line container placed at calc(36% + 236px) = 878.5 + 48px gap = 926.5px from top
+const LOGO_TOP_PCT = 36; // % from top — repositioned so logo bottom clears amber line
 
 const Card6: React.FC = () => {
   const f = useCurrentFrame();
@@ -333,11 +345,12 @@ const Card7: React.FC = () => {
       </div>
 
       {/* Amber line + tagline — anchored BELOW logo, not at logo center */}
-      {/* Logo center is at 38% of 1920 = 729px. Logo height ≈ 160px. Bottom edge ≈ 809px. */}
-      {/* This container starts at 809px + 40px gap = 849px from top = ~44.2% */}
+      {/* Logo PNG: 8492×5902px → at 540px wide, render height ≈ 375px */}
+      {/* Logo center at 36% of 1920 = 691px. Half-height = 187.5px. Bottom edge ≈ 879px. */}
+      {/* Container starts at 879px + 48px gap = 927px from top = calc(36% + 236px) */}
       <div style={{
         position:       'absolute',
-        top:            `calc(${LOGO_TOP_PCT}% + 120px)`,
+        top:            `calc(${LOGO_TOP_PCT}% + 236px)`,
         left:           '50%',
         transform:      'translateX(-50%)',
         display:        'flex',
@@ -378,7 +391,7 @@ const Card7: React.FC = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROOT COMPOSITION — 750 frames exactly
+// ROOT COMPOSITION — 784 frames (26.13s) — Card 7 extended for 07-location.mp3
 // ─────────────────────────────────────────────────────────────────────────────
 export const LandharPremiumV2: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: BG }}>
@@ -386,13 +399,13 @@ export const LandharPremiumV2: React.FC = () => (
     {/* Card 1: frames 0–89 — image only */}
     <Sequence from={0} durationInFrames={90}>
       <Card1 />
-      <Audio src={staticFile(AUDIO.s1)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s1)} startFrom={10} /> */}
     </Sequence>
 
     {/* Card 2: frames 90–209 — continuous image + text */}
     <Sequence from={90} durationInFrames={120}>
       <Card2 />
-      <Audio src={staticFile(AUDIO.s2)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s2)} startFrom={10} /> */}
     </Sequence>
 
     {/* 8-frame dissolve outgoing layer at Card 2→3 boundary */}
@@ -403,13 +416,13 @@ export const LandharPremiumV2: React.FC = () => (
     {/* Card 3: frames 210–329 — bathroom detail, 8-frame dissolve in */}
     <Sequence from={210} durationInFrames={120}>
       <Card3 />
-      <Audio src={staticFile(AUDIO.s3)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s3)} startFrom={10} /> */}
     </Sequence>
 
     {/* Card 4: frames 330–449 — chandelier, hard cut, NO TEXT */}
     <Sequence from={330} durationInFrames={120}>
       <Card4 />
-      <Audio src={staticFile(AUDIO.s4)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s4)} startFrom={10} /> */}
     </Sequence>
 
     {/* 10-frame dissolve outgoing layer at Card 4→5 boundary */}
@@ -420,19 +433,20 @@ export const LandharPremiumV2: React.FC = () => (
     {/* Card 5: frames 450–569 — dusk exterior, 10-frame dissolve in */}
     <Sequence from={450} durationInFrames={120}>
       <Card5 />
-      <Audio src={staticFile(AUDIO.s5)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s5)} startFrom={10} /> */}
     </Sequence>
 
     {/* Card 6: frames 570–659 — logo reveal on dark */}
     <Sequence from={570} durationInFrames={90}>
       <Card6 />
-      <Audio src={staticFile(AUDIO.s6)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s6)} startFrom={10} /> */}
     </Sequence>
 
-    {/* Card 7: frames 660–749 — logo hold + amber line + tagline */}
-    <Sequence from={660} durationInFrames={90}>
+    {/* Card 7: frames 660–783 — logo hold + amber line + tagline */}
+    {/* Extended to 124 frames: 07-location.mp3 is 2.79s (84 frames) + 10f delay = 94f needed, +30f hold */}
+    <Sequence from={660} durationInFrames={124}>
       <Card7 />
-      <Audio src={staticFile(AUDIO.s7)} startFrom={10} />
+      {/* <Audio src={staticFile(AUDIO.s7)} startFrom={10} /> */}
     </Sequence>
 
   </AbsoluteFill>
