@@ -4,6 +4,7 @@ import { LogoReveal } from './compositions/LogoReveal';
 import { KineticTypography } from './compositions/KineticTypography';
 import { WebsitePromo } from './compositions/WebsitePromo';
 import { LandharRebrand } from './compositions/LandharRebrand';
+import { LandharLaunchTeaser } from './compositions/LandharLaunchTeaser';
 
 // Live script — updated by `npm run voice-watch` via OpenLess → OpenRouter
 // Remotion Studio hot-reloads whenever this file changes
@@ -78,6 +79,15 @@ export const RemotionRoot: React.FC = () => {
         fps={30}
         width={1920}
         height={1080}
+        defaultProps={{}}
+      />
+      <Composition
+        id="LandharLaunchTeaser"
+        component={LandharLaunchTeaser}
+        durationInFrames={810}
+        fps={30}
+        width={1080}
+        height={1920}
         defaultProps={{}}
       />
     </>
