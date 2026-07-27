@@ -13,7 +13,8 @@
     "voiceover:logo": "tsx scripts/generate-voiceover.ts logo",
     "voiceover:kinetic": "tsx scripts/generate-voiceover.ts kinetic",
     "voice-watch": "tsx scripts/voice-to-video.ts",
-    "voice-watch:silent": "tsx scripts/voice-to-video.ts --silent"
+    "voice-watch:silent": "tsx scripts/voice-to-video.ts --silent",
+    "render:landhar": "remotion render src/index.ts LandharRebrand --output out/landhar-rebrand.mp4"
   },
   "keywords": [],
   "author": "",
