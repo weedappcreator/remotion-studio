@@ -1,0 +1,31 @@
+{
+  "name": "remotion-studio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:logo": "remotion render src/index.ts LogoReveal --output out/logo-reveal.mp4",
+    "render:kinetic": "remotion render src/index.ts KineticTypography --output out/kinetic.mp4",
+    "render:promo": "remotion render src/index.ts WebsitePromo --output out/promo.mp4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@remotion/animation-utils": "^4.0.499",
+    "@remotion/cli": "^4.0.499",
+    "@remotion/google-fonts": "^4.0.499",
+    "@remotion/media-utils": "^4.0.499",
+    "@remotion/noise": "^4.0.499",
+    "@remotion/player": "^4.0.499",
+    "@remotion/shapes": "^4.0.499",
+    "@remotion/transitions": "^4.0.499",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "remotion": "^4.0.499",
+    "typescript": "^7.0.2"
+  }
+}
