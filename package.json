@@ -29,6 +29,7 @@
     "tts:all-v2": "npm run tts:landhar-v2 && npm run tts:magazine-v2 && npm run tts:slowburn-v2",
     "sound": "tsx scripts/sound-design.ts",
     "render:landhar-full": "bash scripts/render-with-audio.sh",
+    "render:v2": "bash scripts/render-v2.sh",
     "render:magazine-full": "COMPOSITION=LandharMagazine bash scripts/render-with-audio.sh",
     "render:slowburn-full": "COMPOSITION=LandharSlowBurn bash scripts/render-with-audio.sh"
   },
