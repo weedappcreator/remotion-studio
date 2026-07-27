@@ -15,7 +15,9 @@
     "voice-watch": "tsx scripts/voice-to-video.ts",
     "voice-watch:silent": "tsx scripts/voice-to-video.ts --silent",
     "render:landhar": "remotion render src/index.ts LandharRebrand --output out/landhar-rebrand.mp4",
-    "render:landhar-teaser": "remotion render src/index.ts LandharLaunchTeaser --output out/landhar-launch-teaser.mp4"
+    "render:landhar-teaser": "remotion render src/index.ts LandharLaunchTeaser --output out/landhar-launch-teaser.mp4",
+    "record": "tsx scripts/record-narration.ts voiceover",
+    "record:landhar": "tsx scripts/record-narration.ts landhar"
   },
   "keywords": [],
   "author": "",
