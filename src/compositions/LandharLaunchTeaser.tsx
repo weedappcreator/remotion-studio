@@ -1,263 +1,327 @@
 /**
- * LandharLaunchTeaser — 27s vertical gallery film
- * 1080 × 1920 · 30 fps · 810 frames
+ * LandharLaunchTeaser — Premium Architectural Gallery Film
  *
- * Ruflo swarm boot:
- *   import { buildVideoSwarmConfig, logSwarmInit } from '../lib/ruflo';
- *   const swarm = buildVideoSwarmConfig('LandharLaunchTeaser — premium architectural gallery film');
- *   logSwarmInit(swarm.agents, swarm.task);
+ * Format : Instagram Reel / vertical social
+ * Size   : 1080 × 1920
+ * FPS    : 30
+ * Length : 810 frames / 27 seconds
+ *
+ * Ruflo swarm: video-researcher · motion-designer · component-builder
+ *              timing-engineer · render-optimizer · caption-writer
+ *
+ * Design rules:
+ *  - interpolate() + Easing.bezier() only — no spring(), no bounce
+ *  - Amber #C47C3A as 1px hairline only — never a block or bar
+ *  - Cards 1→2 are one continuous photographic move — no cut, no reset
+ *  - Text rendered as live HTML — never baked into images
+ *  - Official logo/icon used as-is from staticFile()
+ *  - No "rebrand", "new", "launching", "change", "finally" anywhere
  */
 
 import React from 'react';
 import {
+  AbsoluteFill,
+  Easing,
+  Img,
+  Sequence,
+  interpolate,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
-  interpolate,
-  Easing,
-  Sequence,
-  Img,
-  staticFile,
-  AbsoluteFill,
 } from 'remotion';
+import { loadFont as loadCormorant } from '@remotion/google-fonts/CormorantGaramond';
+import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { buildVideoSwarmConfig, logSwarmInit } from '../lib/ruflo';
 
-// ─── Ruflo swarm init ────────────────────────────────────────────────────────
+// ── Ruflo ─────────────────────────────────────────────────────────────────────
 const _swarm = buildVideoSwarmConfig(
   'LandharLaunchTeaser — premium architectural gallery film',
 );
-logSwarmInit(_swarm.agents, _swarm.task);
+logSwarmInit(_swarm.agents, 'LandharLaunchTeaser');
 
-// ─── Brand tokens ────────────────────────────────────────────────────────────
-const BRAND = {
-  bg: '#111110',
-  text: '#ECE9E2',
-  accent: '#C47C3A',
-  display: "'Cormorant Garamond', Georgia, serif",
-  body: "'Inter', sans-serif",
+// ── Google Fonts ──────────────────────────────────────────────────────────────
+const { fontFamily: CORMORANT } = loadCormorant('normal', {
+  weights: ['400', '500'],
+  subsets: ['latin'],
+});
+const { fontFamily: INTER } = loadInter('normal', {
+  weights: ['400'],
+  subsets: ['latin'],
+});
+
+// ── Brand tokens ──────────────────────────────────────────────────────────────
+const B = {
+  bg:      '#111110',
+  text:    '#ECE9E2',
+  accent:  '#C47C3A',
+  display: CORMORANT,
+  body:    INTER,
 } as const;
 
-// ─── Easing curves ───────────────────────────────────────────────────────────
-const EASE_EDITORIAL = Easing.bezier(0.45, 0, 0.55, 1);  // slow image movement
-const EASE_TEXT = Easing.bezier(0.16, 1, 0.3, 1);         // controlled text entrance
+// ── Easing curves ─────────────────────────────────────────────────────────────
+/** Slow, editorial image movement — unhurried */
+const E_SLOW = Easing.bezier(0.45, 0, 0.55, 1);
+/** Controlled text entrance — sharp deceleration */
+const E_TEXT = Easing.bezier(0.16, 1, 0.30, 1);
 
 const CLAMP = {
-  extrapolateLeft: 'clamp' as const,
+  extrapolateLeft:  'clamp' as const,
   extrapolateRight: 'clamp' as const,
 };
 
-// ─── AmberHairline ───────────────────────────────────────────────────────────
-/**
- * A 1–2px amber line that draws its width from 0 → props.width over 20 frames.
- * Used as a decorative underline after text settles (Cards 2, 7).
- */
-interface AmberHairlineProps {
-  from: number;
-  width: number;
+// ── Interpolate shorthand ─────────────────────────────────────────────────────
+function itp(
+  f:       number,
+  inStart: number,
+  inEnd:   number,
+  outFrom: number,
+  outTo:   number,
+  ease:    (t: number) => number = E_SLOW,
+): number {
+  return interpolate(f, [inStart, inEnd], [outFrom, outTo], {
+    ...CLAMP,
+    easing: ease,
+  });
 }
 
-const AmberHairline: React.FC<AmberHairlineProps> = ({ from, width }) => {
-  const frame = useCurrentFrame();
-  const drawnWidth = interpolate(frame, [from, from + 20], [0, width], {
-    ...CLAMP,
-    easing: EASE_EDITORIAL,
-  });
+// ─────────────────────────────────────────────────────────────────────────────
+// AmberHairline
+// 1px amber accent line that draws its width left→right.
+// Used as a decorative underline after text settles (Cards 2, 7).
+// ─────────────────────────────────────────────────────────────────────────────
+interface AmberHairlineProps {
+  /** Relative frame at which the line begins drawing */
+  from:   number;
+  /** Final drawn width in px */
+  width?: number;
+}
+
+const AmberHairline: React.FC<AmberHairlineProps> = ({ from, width = 260 }) => {
+  const f = useCurrentFrame();
+  const w = itp(f, from, from + 24, 0, width);
+
   return (
     <div
       style={{
-        width: drawnWidth,
-        height: 1,
-        backgroundColor: BRAND.accent,
-        overflow: 'hidden',
+        width:           w,
+        height:          1,
+        backgroundColor: B.accent,
+        display:         'block',
+        overflow:        'hidden',
       }}
     />
   );
 };
 
-// ─── HairlineWipe ─────────────────────────────────────────────────────────────
-/**
- * Full-height 1px amber line sweeping left→right over 14 frames.
- * Behind it, an animated clipPath reveals incomingChild.
- * The wrapper must be positioned absolutely to fill the parent scene.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// HairlineWipe
+// Amber 1px line sweeps left→right over 14 frames.
+// The incoming scene is revealed progressively BEHIND the line
+// (to the left, like a curtain being drawn).
+// ─────────────────────────────────────────────────────────────────────────────
 interface HairlineWipeProps {
-  from: number;
-  incomingChild: React.ReactNode;
+  children: React.ReactNode;
 }
 
-const HairlineWipe: React.FC<HairlineWipeProps> = ({ from, incomingChild }) => {
-  const frame = useCurrentFrame();
+const WIPE_DURATION = 14;
+
+const HairlineWipe: React.FC<HairlineWipeProps> = ({ children }) => {
+  const f        = useCurrentFrame();
   const { width } = useVideoConfig();
-  const DURATION = 14;
 
-  // hairline x position: 0 → width over DURATION frames
-  const hairlineX = interpolate(frame, [from, from + DURATION], [0, width], {
-    ...CLAMP,
-    easing: EASE_EDITORIAL,
-  });
+  // Hairline x-position: 0 → full width over WIPE_DURATION frames
+  const hx = itp(f, 0, WIPE_DURATION, 0, width);
 
-  // incoming scene is clipped: only the right side of hairlineX is revealed
-  const clipLeft = hairlineX;
+  // Clip the incoming scene: reveal only what's to the LEFT of the hairline
+  // inset(top right bottom left) — we clip from the right, shrinking as hx grows
+  const clipRight = width - hx;
 
   return (
     <>
-      {/* Incoming scene clipped by hairline's leading edge */}
+      {/* Incoming scene: revealed left of hairline */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
-          clipPath: `inset(0 0 0 ${clipLeft}px)`,
+          inset:    0,
+          clipPath: `inset(0 ${clipRight}px 0 0)`,
         }}
       >
-        {incomingChild}
+        {children}
       </div>
 
-      {/* 1px amber hairline — the leading edge */}
+      {/* 1px amber leading edge — fades after wipe completes */}
       <div
         style={{
-          position: 'absolute',
-          top: 0,
-          left: hairlineX,
-          width: 1,
-          height: '100%',
-          backgroundColor: BRAND.accent,
-          opacity: hairlineX < width ? 1 : 0,
+          position:        'absolute',
+          top:             0,
+          left:            hx - 0.5,
+          width:           1,
+          height:          '100%',
+          backgroundColor: B.accent,
+          opacity:         f <= WIPE_DURATION ? 1 : 0,
+          pointerEvents:   'none',
         }}
       />
     </>
   );
 };
 
-// ─── PhotoScene ───────────────────────────────────────────────────────────────
-/**
- * Full-bleed photo with Ken Burns motion.
- * motion='scale'  → scale 1.035→1.065 + translateY 0→-15px over totalFrames
- * motion='up'     → translateY 0→-20px (slow upward drift)
- * motion='down'   → translateY 0→10px  (slow downward drift)
- *
- * startFrame / totalFrames allow absolute-frame math so Card 1→2
- * share the same motion continuum.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// PhotoScene
+// Full-bleed image with Ken Burns motion.
+//
+// motion='scale'  — scale 1.035→1.065 + subtle upward drift
+//                   Uses absoluteOffset so Cards 1+2 share one continuous arc
+// motion='up'     — slow upward translation (chandelier, sky reveal)
+// motion='down'   — slow downward drift (basin, stone details)
+//
+// absoluteOffset: add this to useCurrentFrame() before motion calculation.
+// Allows Cards 1+2 to use the same motion math across two separate Sequences.
+// ─────────────────────────────────────────────────────────────────────────────
+type Motion = 'scale' | 'up' | 'down';
+
 interface PhotoSceneProps {
-  src: string;
-  startFrame: number;
-  totalFrames: number;
-  motion: 'up' | 'down' | 'scale';
+  src:             string;
+  motion:          Motion;
+  absoluteOffset?: number;
+  totalFrames?:    number;
 }
 
 const PhotoScene: React.FC<PhotoSceneProps> = ({
   src,
-  startFrame,
-  totalFrames,
   motion,
+  absoluteOffset = 0,
+  totalFrames    = 120,
 }) => {
   const frame = useCurrentFrame();
-  // Use absolute frame for Card 1+2 continuity
-  const absoluteFrame = frame + startFrame;
-  const end = startFrame + totalFrames;
+  // Absolute frame: allows multi-Sequence continuity
+  const f = frame + absoluteOffset;
 
   let scale = 1;
-  let translateY = 0;
+  let ty    = 0;
 
   if (motion === 'scale') {
-    scale = interpolate(absoluteFrame, [0, end], [1.035, 1.065], {
-      ...CLAMP,
-      easing: EASE_EDITORIAL,
-    });
-    translateY = interpolate(absoluteFrame, [0, end], [0, -15], {
-      ...CLAMP,
-      easing: EASE_EDITORIAL,
-    });
+    // Ken Burns across the full span (Cards 1+2 = 210 frames)
+    scale = itp(f, absoluteOffset, absoluteOffset + totalFrames, 1.035, 1.065);
+    ty    = itp(f, absoluteOffset, absoluteOffset + totalFrames, 0, -16);
   } else if (motion === 'up') {
-    translateY = interpolate(
-      absoluteFrame,
-      [startFrame, end],
-      [0, -20],
-      { ...CLAMP, easing: EASE_EDITORIAL },
-    );
+    ty = itp(f, 0, totalFrames, 0, -22);
   } else if (motion === 'down') {
-    translateY = interpolate(
-      absoluteFrame,
-      [startFrame, end],
-      [0, 10],
-      { ...CLAMP, easing: EASE_EDITORIAL },
-    );
+    ty = itp(f, 0, totalFrames, 0, 14);
   }
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        overflow: 'hidden',
-      }}
-    >
+    <AbsoluteFill style={{ overflow: 'hidden' }}>
       <Img
         src={staticFile(src)}
         style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${translateY}px)`,
+          width:           '100%',
+          height:          '100%',
+          objectFit:       'cover',
+          objectPosition:  'center',
+          display:         'block',
+          // Cinematic treatment: slightly deepened shadows, improved contrast
+          filter:          'brightness(0.88) contrast(1.05)',
+          transform:       `scale(${scale}) translateY(${ty}px)`,
           transformOrigin: 'center center',
-          display: 'block',
         }}
       />
-    </div>
+      {/* Subtle radial vignette — darkens corners without harshness */}
+      <div
+        style={{
+          position:      'absolute',
+          inset:         0,
+          background:    'radial-gradient(ellipse 90% 75% at 50% 40%, transparent 45%, rgba(6,5,4,0.38) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+    </AbsoluteFill>
   );
 };
 
-// ─── LiveCopy ─────────────────────────────────────────────────────────────────
-/**
- * Animated text layer.
- * Single string → one block.
- * string[] → multiple lines with a 3-frame stagger between each.
- * Entrance: opacity 0→1 + translateY 20→0 over 20 frames, EASE_TEXT.
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// TextGradient
+// Legibility gradient behind lower-third editorial copy.
+// Multi-stop for a natural, non-obvious fade.
+// ─────────────────────────────────────────────────────────────────────────────
+const TextGradient: React.FC<{ height?: number }> = ({ height = 680 }) => (
+  <div
+    style={{
+      position:      'absolute',
+      bottom:        0,
+      left:          0,
+      right:         0,
+      height,
+      background:    [
+        'linear-gradient(to top,',
+        '  rgba(8, 7, 6, 0.88) 0%,',
+        '  rgba(8, 7, 6, 0.70) 22%,',
+        '  rgba(8, 7, 6, 0.44) 45%,',
+        '  rgba(8, 7, 6, 0.16) 70%,',
+        '  transparent 100%',
+        ')',
+      ].join('\n'),
+      pointerEvents: 'none',
+    }}
+  />
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveCopy
+// Editorial text entrance: opacity fade + vertical lift only.
+// No typewriter. No per-letter. No word animation.
+// string[] enables subtle multi-line stagger (3–4 frames between lines).
+// ─────────────────────────────────────────────────────────────────────────────
 interface LiveCopyProps {
-  from: number;
-  text: string | string[];
-  fontSize?: number;
-  color?: string;
-  fontFamily?: string;
-  textAlign?: React.CSSProperties['textAlign'];
+  from:           number;
+  text:           string | string[];
+  fontSize?:      number;
+  fontFamily?:    string;
+  fontWeight?:    number;
+  color?:         string;
+  lineHeight?:    number;
+  letterSpacing?: string;
+  textAlign?:     React.CSSProperties['textAlign'];
+  stagger?:       number;
 }
 
 const LiveCopy: React.FC<LiveCopyProps> = ({
   from,
   text,
-  fontSize = 88,
-  color = BRAND.text,
-  fontFamily = BRAND.display,
-  textAlign = 'left',
+  fontSize      = 88,
+  fontFamily    = B.display,
+  fontWeight    = 400,
+  color         = B.text,
+  lineHeight    = 1.16,
+  letterSpacing = '0.005em',
+  textAlign     = 'left',
+  stagger       = 4,
 }) => {
-  const frame = useCurrentFrame();
+  const f     = useCurrentFrame();
   const lines = Array.isArray(text) ? text : [text];
 
   return (
     <div style={{ textAlign }}>
       {lines.map((line, i) => {
-        const lineFrom = from + i * 3;
-        const opacity = interpolate(frame, [lineFrom, lineFrom + 20], [0, 1], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
-        const ty = interpolate(frame, [lineFrom, lineFrom + 20], [20, 0], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
+        const lf = from + i * stagger;
+        const opacity = itp(f, lf, lf + 22, 0, 1, E_TEXT);
+        const ty      = itp(f, lf, lf + 22, 20, 0, E_TEXT);
+
         return (
           <div
             key={i}
             style={{
               opacity,
-              transform: `translateY(${ty}px)`,
+              transform:               `translateY(${ty}px)`,
               fontFamily,
               fontSize,
-              fontWeight: 400,
+              fontWeight,
               color,
-              lineHeight: 1.2,
-              letterSpacing: '0.01em',
-              display: 'block',
+              lineHeight,
+              letterSpacing,
+              display:                 'block',
+              WebkitFontSmoothing:     'antialiased',
+              MozOsxFontSmoothing:     'grayscale',
             }}
           >
             {line}
@@ -268,349 +332,287 @@ const LiveCopy: React.FC<LiveCopyProps> = ({
   );
 };
 
-// ─── Subtle text legibility gradient ─────────────────────────────────────────
-const TextGradientOverlay: React.FC = () => (
-  <div
-    style={{
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 480,
-      background:
-        'linear-gradient(to top, rgba(17,17,16,0.72) 0%, rgba(17,17,16,0) 100%)',
-      pointerEvents: 'none',
-    }}
-  />
-);
-
-// ─── Main composition ─────────────────────────────────────────────────────────
-export const LandharLaunchTeaser: React.FC = () => {
-  return (
-    <AbsoluteFill style={{ backgroundColor: BRAND.bg, overflow: 'hidden' }}>
-
-      {/* ── CARD 1 — frames 0–89 ── */}
-      {/* Image only, no text, no logo, no transition */}
-      <Sequence from={0} durationInFrames={90}>
-        {/* PhotoScene uses absolute frame — startFrame=0, totalFrames=210 spans Cards 1+2 */}
-        <PhotoScene
-          src="media/turramurra-living.png"
-          startFrame={0}
-          totalFrames={210}
-          motion="scale"
-        />
-      </Sequence>
-
-      {/* ── CARD 2 — frames 90–209 ── */}
-      {/* Continuous image (same PhotoScene math) + text + amber hairline */}
-      <Sequence from={90} durationInFrames={120}>
-        {/* Same image, same absolute motion math — visually continuous */}
-        <PhotoScene
-          src="media/turramurra-living.png"
-          startFrame={0}
-          totalFrames={210}
-          motion="scale"
-        />
-        <TextGradientOverlay />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 240,
-            left: 80,
-            right: 80,
-          }}
-        >
-          {/* from=108 absolute frame = 18 frames after card start (card starts at 90) */}
-          {/* Inside the Sequence, useCurrentFrame() is relative, so from = 18 */}
-          <LiveCopy
-            from={18}
-            text="Every commission held to one standard."
-            fontSize={88}
-            fontFamily={BRAND.display}
-            color={BRAND.text}
-          />
-          <div style={{ marginTop: 24 }}>
-            {/* AmberHairline: from=38 (18+20) — after text finishes entering */}
-            <AmberHairline from={38} width={320} />
-          </div>
-        </div>
-      </Sequence>
-
-      {/* ── CARD 3 — frames 210–329 — hairline wipe in ── */}
-      <Sequence from={210} durationInFrames={120}>
-        <HairlineWipe
-          from={0}
-          incomingChild={
-            <PhotoScene
-              src="media/rose-bowl-detail.png"
-              startFrame={210}
-              totalFrames={120}
-              motion="down"
-            />
-          }
-        />
-        <TextGradientOverlay />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 240,
-            left: 80,
-            right: 80,
-          }}
-        >
-          {/* from=24 → 24 frames after card start, 3-frame stagger between lines */}
-          <LiveCopy
-            from={24}
-            text={['Uncompromising.', 'Considered.', 'Crafted.']}
-            fontSize={88}
-            fontFamily={BRAND.display}
-            color={BRAND.text}
-          />
-        </div>
-      </Sequence>
-
-      {/* ── CARD 4 — frames 330–449 — hairline wipe in ── */}
-      <Sequence from={330} durationInFrames={120}>
-        <HairlineWipe
-          from={0}
-          incomingChild={
-            <PhotoScene
-              src="media/glenmore-stairwell.png"
-              startFrame={330}
-              totalFrames={120}
-              motion="up"
-            />
-          }
-        />
-        <TextGradientOverlay />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 240,
-            left: 80,
-            right: 80,
-          }}
-        >
-          {/* from=24 → 24 frames after card start */}
-          <LiveCopy
-            from={24}
-            text="That has never changed."
-            fontSize={88}
-            fontFamily={BRAND.display}
-            color={BRAND.text}
-          />
-        </div>
-      </Sequence>
-
-      {/* ── CARD 5 — frames 450–569 — hairline wipe in ── */}
-      {/* Pivotal line — strongest restrained hierarchy, no hairline decoration */}
-      <Sequence from={450} durationInFrames={120}>
-        <HairlineWipe
-          from={0}
-          incomingChild={
-            <PhotoScene
-              src="media/rose-bowl-dusk.png"
-              startFrame={450}
-              totalFrames={120}
-              motion="up"
-            />
-          }
-        />
-        <TextGradientOverlay />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 280,
-            left: 80,
-            right: 80,
-          }}
-        >
-          {/* from=24 → 24 frames after card start */}
-          <LiveCopy
-            from={24}
-            text="Now, it comes into view."
-            fontSize={96}
-            fontFamily={BRAND.display}
-            color={BRAND.text}
-          />
-        </div>
-      </Sequence>
-
-      {/* ── CARD 6 — frames 570–689 — hairline wipe into dark ground ── */}
-      <Sequence from={570} durationInFrames={120}>
-        <HairlineWipe
-          from={0}
-          incomingChild={
-            <AbsoluteFill style={{ backgroundColor: BRAND.bg }} />
-          }
-        />
-        <BrandIdentityReveal iconFrom={18} logoFrom={30} />
-      </Sequence>
-
-      {/* ── CARD 7 — frames 690–809 ── */}
-      {/* Continuous dark ground, logo stays, hairline + tagline */}
-      <Sequence from={690} durationInFrames={120}>
-        <AbsoluteFill style={{ backgroundColor: BRAND.bg }} />
-        {/* Logo held in same position as Card 6 */}
-        <BrandIdentityReveal iconFrom={-999} logoFrom={-999} />
-        <Card7Tagline />
-      </Sequence>
-
-      {/* ── Audio placeholder ── */}
-      {/* Narration: add <Audio src={staticFile('audio/landhar-narration.wav')} /> when file is supplied */}
-    </AbsoluteFill>
-  );
-};
-
-// ─── BrandIdentityReveal ─────────────────────────────────────────────────────
-/**
- * Icon fades in first, wordmark follows ~12 frames later.
- * Both use opacity + small upward translateY.
- * from=-999 means always fully visible (used for Card 7 hold).
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// BrandIdentityReveal
+// Cards 6 + 7: official icon → wordmark, both on #111110.
+// iconFrom / logoFrom < 0 → already fully visible (hold state for Card 7).
+// ─────────────────────────────────────────────────────────────────────────────
 interface BrandIdentityRevealProps {
-  iconFrom: number;
-  logoFrom: number;
+  iconFrom:       number;
+  logoFrom:       number;
+  showHairline?:  boolean;
+  hairlineFrom?:  number;
+  showTagline?:   boolean;
+  taglineFrom?:   number;
 }
 
 const BrandIdentityReveal: React.FC<BrandIdentityRevealProps> = ({
   iconFrom,
   logoFrom,
+  showHairline = false,
+  hairlineFrom = 0,
+  showTagline  = false,
+  taglineFrom  = 0,
 }) => {
-  const frame = useCurrentFrame();
+  const f = useCurrentFrame();
 
-  const iconOpacity =
-    iconFrom < 0
-      ? 1
-      : interpolate(frame, [iconFrom, iconFrom + 20], [0, 1], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
-  const iconTY =
-    iconFrom < 0
-      ? 0
-      : interpolate(frame, [iconFrom, iconFrom + 20], [12, 0], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
+  const iconOpacity = iconFrom < 0 ? 1 : itp(f, iconFrom, iconFrom + 20, 0, 1, E_TEXT);
+  const iconTY      = iconFrom < 0 ? 0 : itp(f, iconFrom, iconFrom + 20, 16, 0, E_TEXT);
 
-  const logoOpacity =
-    logoFrom < 0
-      ? 1
-      : interpolate(frame, [logoFrom, logoFrom + 20], [0, 1], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
-  const logoTY =
-    logoFrom < 0
-      ? 0
-      : interpolate(frame, [logoFrom, logoFrom + 20], [10, 0], {
-          ...CLAMP,
-          easing: EASE_TEXT,
-        });
+  const logoOpacity = logoFrom < 0 ? 1 : itp(f, logoFrom, logoFrom + 22, 0, 1, E_TEXT);
+  const logoTY      = logoFrom < 0 ? 0 : itp(f, logoFrom, logoFrom + 22, 12, 0, E_TEXT);
+
+  const tagOpacity = showTagline ? itp(f, taglineFrom, taglineFrom + 22, 0, 1, E_TEXT) : 0;
+  const tagTY      = showTagline ? itp(f, taglineFrom, taglineFrom + 22, 16, 0, E_TEXT) : 0;
 
   return (
-    <div
+    <AbsoluteFill
       style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 28,
+        backgroundColor: B.bg,
+        display:         'flex',
+        flexDirection:   'column',
+        alignItems:      'center',
+        justifyContent:  'center',
       }}
     >
-      {/* Official icon */}
+      {/* Official icon — appears first */}
       <div
         style={{
-          opacity: iconOpacity,
+          opacity:   iconOpacity,
           transform: `translateY(${iconTY}px)`,
         }}
       >
         <Img
           src={staticFile('brand/landhar-icon-white.png')}
-          style={{
-            width: 120,
-            height: 'auto',
-            display: 'block',
-          }}
+          style={{ width: 88, height: 'auto', display: 'block' }}
         />
       </div>
 
-      {/* Official wordmark */}
+      {/* Spacer between icon and wordmark */}
+      <div style={{ height: 22 }} />
+
+      {/* Official wordmark — follows icon */}
       <div
         style={{
-          opacity: logoOpacity,
+          opacity:   logoOpacity,
           transform: `translateY(${logoTY}px)`,
         }}
       >
         <Img
           src={staticFile('brand/landhar-logo-white.png')}
-          style={{
-            width: 280,
-            height: 'auto',
-            display: 'block',
-          }}
+          style={{ width: 288, height: 'auto', display: 'block' }}
         />
       </div>
-    </div>
+
+      {/* 1px amber hairline — Card 7 only */}
+      {showHairline && (
+        <div style={{ marginTop: 30 }}>
+          <AmberHairline from={hairlineFrom} width={192} />
+        </div>
+      )}
+
+      {/* Tagline — Card 7 only */}
+      {showTagline && (
+        <div
+          style={{
+            marginTop:           22,
+            opacity:             tagOpacity,
+            transform:           `translateY(${tagTY}px)`,
+            fontFamily:          B.display,
+            fontSize:            38,
+            fontWeight:          400,
+            color:               B.text,
+            lineHeight:          1.32,
+            letterSpacing:       '0.01em',
+            textAlign:           'center',
+            paddingLeft:         80,
+            paddingRight:        80,
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+          }}
+        >
+          Custom homes, commissioned<br />across Greater Sydney.
+        </div>
+      )}
+    </AbsoluteFill>
   );
 };
 
-// ─── Card7Tagline ─────────────────────────────────────────────────────────────
-/**
- * Amber hairline draws beneath the logo position, then tagline fades in.
- * Positioned below the brand identity block (roughly vertically centered + offset).
- */
-const Card7Tagline: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  const taglineOpacity = interpolate(frame, [30, 50], [0, 1], {
-    ...CLAMP,
-    easing: EASE_TEXT,
-  });
-  const taglineTY = interpolate(frame, [30, 50], [16, 0], {
-    ...CLAMP,
-    easing: EASE_TEXT,
-  });
-
+// ─────────────────────────────────────────────────────────────────────────────
+// LandharLaunchTeaser — main composition
+// Total: 810 frames / 27 seconds
+// ─────────────────────────────────────────────────────────────────────────────
+export const LandharLaunchTeaser: React.FC = () => {
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        // Push below the brand block (icon ~120px + gap 28 + logo ~56px + gap 28 ≈ 232px)
-        paddingTop: 292,
-      }}
-    >
-      {/* Amber hairline */}
-      <div style={{ marginBottom: 32 }}>
-        <AmberHairline from={20} width={200} />
-      </div>
+    <AbsoluteFill style={{ backgroundColor: B.bg, overflow: 'hidden' }}>
 
-      {/* Tagline */}
-      <div
-        style={{
-          opacity: taglineOpacity,
-          transform: `translateY(${taglineTY}px)`,
-          fontFamily: BRAND.display,
-          fontSize: 44,
-          fontWeight: 400,
-          color: BRAND.text,
-          lineHeight: 1.2,
-          letterSpacing: '0.01em',
-          textAlign: 'center',
-          paddingLeft: 80,
-          paddingRight: 80,
-        }}
-      >
-        Custom homes, commissioned across Greater Sydney.
-      </div>
-    </div>
+      {/*
+       * ── CARDS 1 + 2 — Turramurra interior — frames 0–209 ──────────────────
+       *
+       * ONE continuous photographic move across both cards.
+       * absoluteOffset=0, totalFrames=210 → motion spans 0→209.
+       * Card 1: image only (0–89).
+       * Card 2: text + hairline overlay (90–209).
+       * NO transition between Card 1 and Card 2.
+       */}
+
+      {/* Photo: renders for full 210 frames, continuous */}
+      <Sequence from={0} durationInFrames={210}>
+        <PhotoScene
+          src="media/turramurra-living.png"
+          motion="scale"
+          absoluteOffset={0}
+          totalFrames={210}
+        />
+      </Sequence>
+
+      {/* Card 2 text overlay: enters 18 frames after its start (absolute frame 108) */}
+      <Sequence from={90} durationInFrames={120}>
+        <AbsoluteFill>
+          <TextGradient />
+          <div
+            style={{
+              position: 'absolute',
+              bottom:   200,
+              left:     80,
+              right:    80,
+            }}
+          >
+            <LiveCopy
+              from={18}
+              text="Every commission held to one standard."
+              fontSize={84}
+            />
+            <div style={{ marginTop: 24 }}>
+              {/* Hairline draws after text finishes entering: 18 + 22 = 40 */}
+              <AmberHairline from={42} width={272} />
+            </div>
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/*
+       * ── CARD 3 — Rose Bowl bathroom detail — frames 210–329 ───────────────
+       * Slow downward drift following basin, stone, black fittings.
+       * Three-line stagger: 4 frames per line.
+       */}
+      <Sequence from={210} durationInFrames={120}>
+        <AbsoluteFill>
+          <HairlineWipe>
+            <PhotoScene
+              src="media/rose-bowl-detail.png"
+              motion="down"
+              totalFrames={120}
+            />
+          </HairlineWipe>
+          <TextGradient />
+          <div style={{ position: 'absolute', bottom: 200, left: 80, right: 80 }}>
+            <LiveCopy
+              from={22}
+              text={['Uncompromising.', 'Considered.', 'Crafted.']}
+              fontSize={84}
+              stagger={4}
+            />
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/*
+       * ── CARD 4 — Glenmore Park double-height chandelier — frames 330–449 ──
+       * Slow upward move letting the chandelier command the upper frame.
+       */}
+      <Sequence from={330} durationInFrames={120}>
+        <AbsoluteFill>
+          <HairlineWipe>
+            <PhotoScene
+              src="media/glenmore-stairwell.png"
+              motion="up"
+              totalFrames={120}
+            />
+          </HairlineWipe>
+          <TextGradient />
+          <div style={{ position: 'absolute', bottom: 200, left: 80, right: 80 }}>
+            <LiveCopy
+              from={22}
+              text="That has never changed."
+              fontSize={84}
+            />
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/*
+       * ── CARD 5 — Rose Bowl dusk exterior — frames 450–569 ─────────────────
+       * THE PIVOTAL LINE. Slow upward push revealing sky.
+       * Larger type (96px). Maximum negative space. No amber decoration.
+       * This is the emotional turn — cleanest composition in the film.
+       */}
+      <Sequence from={450} durationInFrames={120}>
+        <AbsoluteFill>
+          <HairlineWipe>
+            <PhotoScene
+              src="media/rose-bowl-dusk.png"
+              motion="up"
+              totalFrames={120}
+            />
+          </HairlineWipe>
+          <TextGradient height={760} />
+          <div style={{ position: 'absolute', bottom: 240, left: 80, right: 80 }}>
+            <LiveCopy
+              from={22}
+              text="Now, it comes into view."
+              fontSize={96}
+              lineHeight={1.10}
+            />
+          </div>
+        </AbsoluteFill>
+      </Sequence>
+
+      {/*
+       * ── CARD 6 — Identity reveal — frames 570–689 ─────────────────────────
+       * Pure #111110. Hairline wipe in from Card 5.
+       * Official icon enters first (~18f), wordmark follows (~30f).
+       * No glow. No shadow. No reconstruction. Exact geometry preserved.
+       */}
+      <Sequence from={570} durationInFrames={120}>
+        <HairlineWipe>
+          <BrandIdentityReveal
+            iconFrom={18}
+            logoFrom={30}
+          />
+        </HairlineWipe>
+      </Sequence>
+
+      {/*
+       * ── CARD 7 — Final hold — frames 690–809 ──────────────────────────────
+       * Continuous dark ground. Logo held in exact same optical position.
+       * Amber hairline draws beneath logo at ~12f.
+       * Tagline fades at ~28f.
+       * Ends on a clean static hold — no fade out.
+       */}
+      <Sequence from={690} durationInFrames={120}>
+        <BrandIdentityReveal
+          iconFrom={-1}
+          logoFrom={-1}
+          showHairline
+          hairlineFrom={12}
+          showTagline
+          taglineFrom={28}
+        />
+      </Sequence>
+
+      {/*
+       * ── Audio ──────────────────────────────────────────────────────────────
+       * Narration: calm, assured, Australian English.
+       * Add <Audio> when public/audio/landhar-narration.wav is supplied.
+       * Leave 8–12 frames of silence before the first spoken word.
+       *
+       * import { Audio } from 'remotion';
+       * <Audio src={staticFile('audio/landhar-narration.wav')} startFrom={10} />
+       *
+       * Music: placeholder for a calm cinematic track (add later).
+       */}
+
+    </AbsoluteFill>
   );
 };
