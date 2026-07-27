@@ -1,24 +1,19 @@
 /**
- * LandharPremiumV2 — Architectural Editorial Film, Apple-Level Precision
+ * LandharPremiumV2 — Architectural Editorial Film
  *
- * Format : 1080 × 1920 (vertical / Reels)
+ * Format : 1080 × 1920 (vertical)
  * FPS    : 30
  * Length : 750 frames / 25 seconds
  *
- * Ruflo swarm: composition-analyst · animation-builder · voiceover-sync · timing-reviewer
- *
- * Design rules (v2 brief):
- *  - Dark ground: #111110 throughout
- *  - Text: #ECE9E2 — NO shadow, NO glow, NO italic, NO uppercase
- *  - Accent #C47C3A appears ONLY as the 1px line on Card 7
- *  - Cormorant Garamond 500 for display, Inter 400 for body
- *  - Text reveals: translateY 8px → 0px only. No per-letter/per-word animation.
- *  - Photo motion: max 2–3% scale, max 18px translation. E_IMG only.
- *  - Cards 1+2 share ONE continuous motion arc (absoluteFrame 0–209)
- *  - Transitions: opacity dissolve only. No wipes, no zooms, no amber hairlines.
- *  - Logo: landhar-logo-white.png as ONE complete asset, never split
- *  - interpolate() + Easing.bezier() only — ZERO spring() calls
- *  - FORBIDDEN: KineticText, BlurReveal, HairlineWipe, WarmTint, GradientBg, NoiseBg, ParticlesBg
+ * v2 fixes applied:
+ *  - Clean photos without baked text
+ *  - Correct photo assignments per brief
+ *  - Logo: 540px wide, optically above center
+ *  - Card 7: tagline positioned BELOW logo, no overlap
+ *  - Amber line visible on Card 7
+ *  - Card 4: truly NO text
+ *  - Font: Cormorant Garamond 500, Inter 400
+ *  - Text: translateY 8px → 0 only
  */
 
 import React from 'react';
@@ -31,470 +26,350 @@ import {
   interpolate,
   staticFile,
   useCurrentFrame,
-  useVideoConfig,
 } from 'remotion';
 import { loadFont as loadCormorant } from '@remotion/google-fonts/CormorantGaramond';
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { buildVideoSwarmConfig, logSwarmInit } from '../lib/ruflo';
 
-// ── Ruflo swarm init ──────────────────────────────────────────────────────────
-const _swarm = buildVideoSwarmConfig(
-  'LandharPremiumV2 — architectural editorial film, Apple-level precision',
-);
+// ── Ruflo ─────────────────────────────────────────────────────────────────────
+const _swarm = buildVideoSwarmConfig('LandharPremiumV2 — architectural editorial film v2 fixed');
 logSwarmInit(_swarm.agents, 'LandharPremiumV2');
 
-// ── Google Fonts ──────────────────────────────────────────────────────────────
-const { fontFamily: CORMORANT } = loadCormorant('normal', {
-  weights: ['500'],
-  subsets: ['latin'],
-});
-const { fontFamily: INTER } = loadInter('normal', {
-  weights: ['400'],
-  subsets: ['latin'],
-});
+// ── Fonts ─────────────────────────────────────────────────────────────────────
+const { fontFamily: CORMORANT } = loadCormorant('normal', { weights: ['500'], subsets: ['latin'] });
+const { fontFamily: INTER }     = loadInter('normal',     { weights: ['400'], subsets: ['latin'] });
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
-const BG      = '#111110';
-const TEXT    = '#ECE9E2';
-const ACCENT  = '#C47C3A'; // amber — ONLY Card 7 hairline
+// ── Brand ─────────────────────────────────────────────────────────────────────
+const BG     = '#111110';
+const TEXT   = '#ECE9E2';
+const ACCENT = '#C47C3A'; // amber — Card 7 hairline ONLY
 
-// ── Easing curves (v2 spec) ───────────────────────────────────────────────────
-/** All photo motion */
-const E_IMG  = Easing.bezier(0.45, 0, 0.55, 1);
-/** All text reveals — NOT 0.16,1,0.30,1 */
-const E_TEXT = Easing.bezier(0.22, 1, 0.36, 1);
+// ── Easing ───────────────────────────────────────────────────────────────────
+const E_IMG  = Easing.bezier(0.45, 0, 0.55, 1); // photo motion
+const E_TEXT = Easing.bezier(0.22, 1, 0.36, 1); // text reveals
+const CL = { extrapolateLeft: 'clamp' as const, extrapolateRight: 'clamp' as const };
 
-const CLAMP = {
-  extrapolateLeft:  'clamp' as const,
-  extrapolateRight: 'clamp' as const,
+// ── Assets ────────────────────────────────────────────────────────────────────
+const PHOTOS = {
+  turramurra:   'media/turramurra-clean.png',      // Cards 1+2 — Turramurra living room
+  bathroom:     'media/rose-bowl-detail-clean.png', // Card 3   — Rose Bowl bathroom detail
+  chandelier:   'media/glenmore-clean.png',          // Card 4   — Glenmore Park chandelier
+  dusk:         'media/rose-bowl-dusk-clean.png',   // Card 5   — Rose Bowl dusk exterior
+  logo:         'brand/landhar-logo-white.png',      // Cards 6+7 — official logo
 };
 
-// ── Image filter ──────────────────────────────────────────────────────────────
+const AUDIO = {
+  s1: 'voiceover/landhar-premium-v2/01-work.mp3',
+  s2: 'voiceover/landhar-premium-v2/02-standard.mp3',
+  s3: 'voiceover/landhar-premium-v2/03-detail.mp3',
+  s4: 'voiceover/landhar-premium-v2/04-constant.mp3',
+  s5: 'voiceover/landhar-premium-v2/05-view.mp3',
+  s6: 'voiceover/landhar-premium-v2/06-brand.mp3',
+  s7: 'voiceover/landhar-premium-v2/07-location.mp3',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const IMG_FILTER = 'brightness(0.92) contrast(1.04)';
 
-// ── Legibility gradient (photo cards with text only) ─────────────────────────
+/** Shared text reveal: opacity 0→1 + translateY 8→0 over 20 frames */
+function useTextReveal(localFrame: number, from: number) {
+  const f = localFrame - from;
+  return {
+    opacity:  interpolate(f, [0, 20], [0, 1], { ...CL, easing: E_TEXT }),
+    ty:       interpolate(f, [0, 20], [8, 0], { ...CL, easing: E_TEXT }),
+  };
+}
+
+/** Text exit: opacity 1→0 over 8 frames */
+function useTextExit(localFrame: number, from: number) {
+  return interpolate(localFrame, [from, from + 8], [1, 0], CL);
+}
+
+// ── LegibilityGradient ────────────────────────────────────────────────────────
 const LegibilityGradient: React.FC = () => (
-  <div
-    style={{
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: 520,
-      background:
-        'linear-gradient(to top, rgba(17,17,16,0.52) 0%, rgba(17,17,16,0.16) 42%, rgba(17,17,16,0) 68%)',
-      pointerEvents: 'none',
-    }}
-  />
+  <div style={{
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 560,
+    background: 'linear-gradient(to top, rgba(17,17,16,0.52) 0%, rgba(17,17,16,0.16) 42%, rgba(17,17,16,0) 68%)',
+    pointerEvents: 'none',
+  }} />
 );
 
-// ── Card 1: frames 0–89 — Photo only, no text ────────────────────────────────
+// ── Display text style ────────────────────────────────────────────────────────
+const displayStyle = (size: number, lineH: number = 0.94): React.CSSProperties => ({
+  fontFamily:    CORMORANT,
+  fontWeight:    500,
+  fontSize:      size,
+  lineHeight:    lineH,
+  letterSpacing: '-1.5px',
+  color:         TEXT,
+  margin:        0,
+  padding:       0,
+  WebkitFontSmoothing: 'antialiased',
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 1 — frames 0–89
+// Turramurra living room. Image only. No text.
+// Part of the continuous 0–209 motion arc.
+// ─────────────────────────────────────────────────────────────────────────────
 const Card1: React.FC = () => {
   const f = useCurrentFrame();
-  // Cards 1+2 share ONE continuous motion arc — absoluteFrame 0–209
-  // Card 1 spans absoluteFrame 0–89 (partial of the arc)
-  const scale = interpolate(f, [0, 209], [1.02, 1.05], { ...CLAMP, easing: E_IMG });
-  const ty    = interpolate(f, [0, 209], [0, -16],     { ...CLAMP, easing: E_IMG });
+  const scale = interpolate(f, [0, 209], [1.02, 1.05], { ...CL, easing: E_IMG });
+  const ty    = interpolate(f, [0, 209], [0, -16],     { ...CL, easing: E_IMG });
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
       <Img
-        src={staticFile('media/turramurra-living.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${ty}px)`,
-          filter: IMG_FILTER,
-        }}
+        src={staticFile(PHOTOS.turramurra)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }}
       />
     </AbsoluteFill>
   );
 };
 
-// ── Card 2: frames 90–209 — Continuous image + text ──────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 2 — frames 90–209
+// Continuous Turramurra motion. Text enters at relative frame 20.
+// ─────────────────────────────────────────────────────────────────────────────
 const Card2: React.FC = () => {
-  // f is relative (0–119), but motion uses absoluteFrame = f + 90
-  const f = useCurrentFrame();
-  const absF = f + 90; // absoluteFrame for the shared 0–209 arc
+  const f    = useCurrentFrame();
+  const absF = f + 90; // absolute frame for 0–209 arc
+  const scale = interpolate(absF, [0, 209], [1.02, 1.05], { ...CL, easing: E_IMG });
+  const ty    = interpolate(absF, [0, 209], [0, -16],     { ...CL, easing: E_IMG });
 
-  const scale = interpolate(absF, [0, 209], [1.02, 1.05], { ...CLAMP, easing: E_IMG });
-  const ty    = interpolate(absF, [0, 209], [0, -16],     { ...CLAMP, easing: E_IMG });
-
-  // Text enters at relative frame 20
-  const textEnterF = f - 20;
-  const opacity = interpolate(textEnterF, [0, 20], [0, 1], { ...CLAMP, easing: E_TEXT });
-  const textTy  = interpolate(textEnterF, [0, 20], [8, 0], { ...CLAMP, easing: E_TEXT });
-
-  // Text exit at relative frame 100 — 8-frame fade, no movement
-  const exitOpacity = interpolate(f, [100, 108], [1, 0], CLAMP);
-  const finalOpacity = f >= 100 ? exitOpacity : opacity;
+  const { opacity, ty: textTy } = useTextReveal(f, 20);
+  const exitOp = useTextExit(f, 100);
+  const finalOp = f >= 100 ? exitOp : opacity;
+  const finalTy = f >= 100 ? 0 : textTy;
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
       <Img
-        src={staticFile('media/turramurra-living.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${ty}px)`,
-          filter: IMG_FILTER,
-        }}
+        src={staticFile(PHOTOS.turramurra)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }}
       />
       <LegibilityGradient />
-      {/* Text block */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 90,
-          bottom: 180,
-          maxWidth: 760,
-          opacity: finalOpacity,
-          transform: `translateY(${f >= 100 ? 0 : textTy}px)`,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: CORMORANT,
-            fontWeight: 500,
-            fontSize: 112,
-            lineHeight: 0.94,
-            letterSpacing: '-1.5px',
-            color: TEXT,
-            margin: 0,
-            padding: 0,
-          }}
-        >
-          Every commission.
-          <br />
-          One standard.
-        </div>
+      <div style={{ position: 'absolute', left: 90, bottom: 200, maxWidth: 760,
+        opacity: finalOp, transform: `translateY(${finalTy}px)` }}>
+        <p style={displayStyle(112)}>
+          Every commission.<br />One standard.
+        </p>
       </div>
     </AbsoluteFill>
   );
 };
 
-// ── Card 3: frames 210–329 — Rose Bowl detail ─────────────────────────────────
+// ── Card 2 frozen layer for 8-frame dissolve ──────────────────────────────────
+const Card2Frozen: React.FC = () => {
+  const f = useCurrentFrame();
+  const op = interpolate(f, [0, 8], [1, 0], CL);
+  const scale = interpolate(209, [0, 209], [1.02, 1.05], { ...CL, easing: E_IMG });
+  const ty    = interpolate(209, [0, 209], [0, -16],     { ...CL, easing: E_IMG });
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: op }}>
+      <Img src={staticFile(PHOTOS.turramurra)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 3 — frames 210–329
+// Rose Bowl bathroom detail. 8-frame dissolve in.
+// THREE-LINE BLOCK revealed as ONE (no stagger).
+// ─────────────────────────────────────────────────────────────────────────────
 const Card3: React.FC = () => {
   const f = useCurrentFrame();
+  const scale = interpolate(f, [0, 120], [1.00, 1.01], { ...CL, easing: E_IMG });
+  const ty    = interpolate(f, [0, 120], [0, 14],      { ...CL, easing: E_IMG });
+  const dissolveIn = interpolate(f, [0, 8], [0, 1], CL);
 
-  // Slow downward drift, max 14px, scale 1.0→1.01
-  const scale = interpolate(f, [0, 120], [1.0, 1.01],  { ...CLAMP, easing: E_IMG });
-  const ty    = interpolate(f, [0, 120], [0, 14],      { ...CLAMP, easing: E_IMG });
-
-  // Text: ONE BLOCK, zero stagger — enters at relative frame 22
-  const textEnterF = f - 22;
-  const opacity = interpolate(textEnterF, [0, 20], [0, 1], { ...CLAMP, easing: E_TEXT });
-  const textTy  = interpolate(textEnterF, [0, 20], [8, 0], { ...CLAMP, easing: E_TEXT });
-
-  // Text exit at relative frame 100 — 8-frame fade
-  const exitOpacity = interpolate(f, [100, 108], [1, 0], CLAMP);
-  const finalOpacity = f >= 100 ? exitOpacity : opacity;
-
-  // 8-frame dissolve IN from Card 2 (frames 0–8 of Card 3)
-  const dissolveIn = interpolate(f, [0, 8], [0, 1], CLAMP);
+  const { opacity, ty: textTy } = useTextReveal(f, 22);
+  const exitOp = useTextExit(f, 100);
+  const finalOp = f >= 100 ? exitOp : opacity;
+  const finalTy = f >= 100 ? 0 : textTy;
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: dissolveIn }}>
-      <Img
-        src={staticFile('media/rose-bowl-detail.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${ty}px)`,
-          filter: IMG_FILTER,
-        }}
-      />
+      <Img src={staticFile(PHOTOS.bathroom)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 35%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
       <LegibilityGradient />
-      {/* Text block — ONE BLOCK, no per-line stagger */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 90,
-          bottom: 180,
-          maxWidth: 760,
-          opacity: finalOpacity,
-          transform: `translateY(${f >= 100 ? 0 : textTy}px)`,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: CORMORANT,
-            fontWeight: 500,
-            fontSize: 106,
-            lineHeight: 0.94,
-            letterSpacing: '-1.5px',
-            color: TEXT,
-            margin: 0,
-            padding: 0,
-          }}
-        >
-          Uncompromising.
-          <br />
-          Considered.
-          <br />
-          Crafted.
-        </div>
+      <div style={{ position: 'absolute', left: 90, bottom: 200, maxWidth: 760,
+        opacity: finalOp, transform: `translateY(${finalTy}px)` }}>
+        {/* ONE BLOCK — zero stagger per v2 brief */}
+        <p style={displayStyle(106)}>
+          Uncompromising.<br />Considered.<br />Crafted.
+        </p>
       </div>
     </AbsoluteFill>
   );
 };
 
-// ── Card 2 → Card 3 dissolve: outgoing layer ──────────────────────────────────
-// Rendered as an overlay in the Card 3 Sequence window
-const Card2Outgoing: React.FC = () => {
-  const f = useCurrentFrame();
-  const absF = f + 90 + 120; // absoluteFrame offset for shared arc (not used here, just for image match)
-  // dissolve OUT: opacity 1→0 over frames 0–8
-  const outOpacity = interpolate(f, [0, 8], [1, 0], CLAMP);
-
-  // Mirror Card2's motion at its last frame (~frame 119 relative = absolute 209)
-  const frozenAbs = 209;
-  const scale = interpolate(frozenAbs, [0, 209], [1.02, 1.05], { ...CLAMP, easing: E_IMG });
-  const ty    = interpolate(frozenAbs, [0, 209], [0, -16],     { ...CLAMP, easing: E_IMG });
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: outOpacity }}>
-      <Img
-        src={staticFile('media/turramurra-living.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${ty}px)`,
-          filter: IMG_FILTER,
-        }}
-      />
-    </AbsoluteFill>
-  );
-};
-
-// ── Card 4: frames 330–449 — Glenmore stairwell, NO TEXT ─────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 4 — frames 330–449
+// Glenmore Park chandelier. Hard cut. ABSOLUTELY NO TEXT.
+// ─────────────────────────────────────────────────────────────────────────────
 const Card4: React.FC = () => {
   const f = useCurrentFrame();
-
-  // Slow upward movement, max 16px, scale 1.0→1.02
-  const scale = interpolate(f, [0, 120], [1.0, 1.02],  { ...CLAMP, easing: E_IMG });
-  const ty    = interpolate(f, [0, 120], [0, -16],     { ...CLAMP, easing: E_IMG });
+  const scale = interpolate(f, [0, 120], [1.00, 1.02], { ...CL, easing: E_IMG });
+  const ty    = interpolate(f, [0, 120], [0, -16],     { ...CL, easing: E_IMG });
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden' }}>
-      <Img
-        src={staticFile('media/glenmore-stairwell.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale}) translateY(${ty}px)`,
-          filter: IMG_FILTER,
-        }}
-      />
-      {/* NO gradient, NO text */}
+      <Img src={staticFile(PHOTOS.chandelier)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+      {/* NO gradient, NO text, NO overlay — Card 4 is image only per v2 brief */}
     </AbsoluteFill>
   );
 };
 
-// ── Card 5: frames 450–569 — Rose Bowl dusk, pivotal ─────────────────────────
+// ── Card 4 frozen layer for 10-frame dissolve ─────────────────────────────────
+const Card4Frozen: React.FC = () => {
+  const f = useCurrentFrame();
+  const op    = interpolate(f, [0, 10], [1, 0], CL);
+  const scale = interpolate(119, [0, 120], [1.00, 1.02], { ...CL, easing: E_IMG });
+  const ty    = interpolate(119, [0, 120], [0, -16],     { ...CL, easing: E_IMG });
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: op }}>
+      <Img src={staticFile(PHOTOS.chandelier)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 30%',
+          transform: `scale(${scale}) translateY(${ty}px)`, filter: IMG_FILTER }} />
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 5 — frames 450–569
+// Rose Bowl dusk exterior. 10-frame dissolve in. Pivotal line.
+// Nearly static — 2% scale push only.
+// ─────────────────────────────────────────────────────────────────────────────
 const Card5: React.FC = () => {
   const f = useCurrentFrame();
+  const scale      = interpolate(f, [0, 120], [1.00, 1.02], { ...CL, easing: E_IMG });
+  const dissolveIn = interpolate(f, [0, 10], [0, 1], CL);
 
-  // Nearly static — scale only, no translation
-  const scale = interpolate(f, [0, 120], [1.0, 1.02], { ...CLAMP, easing: E_IMG });
-
-  // 10-frame dissolve IN from Card 4 (frames 0–10)
-  const dissolveIn = interpolate(f, [0, 10], [0, 1], CLAMP);
-
-  // Text enters at relative frame 24
-  const textEnterF = f - 24;
-  const opacity = interpolate(textEnterF, [0, 20], [0, 1], { ...CLAMP, easing: E_TEXT });
-  const textTy  = interpolate(textEnterF, [0, 20], [8, 0], { ...CLAMP, easing: E_TEXT });
+  const { opacity, ty: textTy } = useTextReveal(f, 24);
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: dissolveIn }}>
-      <Img
-        src={staticFile('media/rose-bowl-dusk.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${scale})`,
-          filter: IMG_FILTER,
-        }}
-      />
+      <Img src={staticFile(PHOTOS.dusk)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 70%',
+          transform: `scale(${scale})`, filter: IMG_FILTER }} />
       <LegibilityGradient />
-      <div
-        style={{
-          position: 'absolute',
-          left: 90,
-          bottom: 200,
-          maxWidth: 760,
-          opacity: opacity,
-          transform: `translateY(${textTy}px)`,
-        }}
-      >
-        <div
-          style={{
-            fontFamily: CORMORANT,
-            fontWeight: 500,
-            fontSize: 108,
-            lineHeight: 0.96,
-            letterSpacing: '-1.5px',
-            color: TEXT,
-            margin: 0,
-            padding: 0,
-          }}
-        >
+      <div style={{ position: 'absolute', left: 90, bottom: 220, maxWidth: 760,
+        opacity, transform: `translateY(${textTy}px)` }}>
+        <p style={displayStyle(108, 0.96)}>
           Now, it comes into view.
-        </div>
+        </p>
       </div>
     </AbsoluteFill>
   );
 };
 
-// ── Card 4 outgoing for dissolve ──────────────────────────────────────────────
-const Card4Outgoing: React.FC = () => {
-  const f = useCurrentFrame();
-  const outOpacity = interpolate(f, [0, 10], [1, 0], CLAMP);
-  // Frozen at Card4's last frame motion
-  const frozenScale = interpolate(119, [0, 120], [1.0, 1.02], { ...CLAMP, easing: E_IMG });
-  const frozenTy    = interpolate(119, [0, 120], [0, -16],    { ...CLAMP, easing: E_IMG });
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 6 — frames 570–659
+// Pure #111110. Logo reveals as ONE complete asset.
+// Opacity 0→1 + scale 0.995→1 over 20 frames starting at relative frame 18.
+// Complete stillness after frame 38.
+// ─────────────────────────────────────────────────────────────────────────────
+const LOGO_TOP_PCT = 38; // % from top — optically above center
 
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG, overflow: 'hidden', opacity: outOpacity }}>
-      <Img
-        src={staticFile('media/glenmore-stairwell.png')}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: `scale(${frozenScale}) translateY(${frozenTy}px)`,
-          filter: IMG_FILTER,
-        }}
-      />
-    </AbsoluteFill>
-  );
-};
-
-// ── Card 6: frames 570–659 — Logo reveal on #111110 ──────────────────────────
 const Card6: React.FC = () => {
   const f = useCurrentFrame();
-
-  // Logo fades in at relative frame 18, over 20 frames
-  const logoF = f - 18;
-  const logoOpacity = interpolate(logoF, [0, 20], [0, 1], { ...CLAMP, easing: E_TEXT });
-  const logoScale   = interpolate(logoF, [0, 20], [0.995, 1], { ...CLAMP, easing: E_TEXT });
-
-  // After frame 38: complete stillness (logo is fully settled)
-  const finalOpacity = f < 18 ? 0 : logoOpacity;
-  const finalScale   = f < 18 ? 0.995 : logoScale;
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      {/* Logo positioned slightly above center */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '42%',
-          left: '50%',
-          transform: `translateX(-50%) translateY(-50%) scale(${finalScale})`,
-          opacity: finalOpacity,
-          transformOrigin: 'center center',
-        }}
-      >
-        <Img
-          src={staticFile('brand/landhar-logo-white.png')}
-          style={{
-            width: 540,
-            height: 'auto',
-            display: 'block',
-          }}
-        />
-      </div>
-    </AbsoluteFill>
-  );
-};
-
-// ── Card 7: frames 660–749 — Logo hold + tagline ─────────────────────────────
-const Card7: React.FC = () => {
-  const f = useCurrentFrame();
-
-  // Logo: completely static, held from Card 6 position
-  const LOGO_TOP = '42%';
-
-  // Amber line: scaleX 0→1 over 18 frames, starting at relative frame 8
-  const lineF = f - 8;
-  const lineScale = interpolate(lineF, [0, 18], [0, 1], { ...CLAMP, easing: E_TEXT });
-
-  // Tagline fades in at relative frame 16
-  const tagF = f - 16;
-  const tagOpacity = interpolate(tagF, [0, 20], [0, 1], { ...CLAMP, easing: E_TEXT });
-  const tagTy      = interpolate(tagF, [0, 20], [8, 0], { ...CLAMP, easing: E_TEXT });
+  const lf = Math.max(0, f - 18);
+  const logoOp    = interpolate(lf, [0, 20], [0, 1],     { ...CL, easing: E_TEXT });
+  const logoScale = interpolate(lf, [0, 20], [0.995, 1], { ...CL, easing: E_TEXT });
 
   return (
     <AbsoluteFill style={{ backgroundColor: BG }}>
-      {/* Logo — identical position to Card 6, fully static */}
-      <div
-        style={{
-          position: 'absolute',
-          top: LOGO_TOP,
-          left: '50%',
-          transform: 'translateX(-50%) translateY(-50%)',
-          opacity: 1,
-        }}
-      >
-        <Img
-          src={staticFile('brand/landhar-logo-white.png')}
-          style={{
-            width: 540,
-            height: 'auto',
-            display: 'block',
-          }}
-        />
+      <div style={{
+        position: 'absolute',
+        top:       `${LOGO_TOP_PCT}%`,
+        left:      '50%',
+        transform: `translate(-50%, -50%) scale(${logoScale})`,
+        transformOrigin: 'center center',
+        opacity:   logoOp,
+      }}>
+        <Img src={staticFile(PHOTOS.logo)}
+          style={{ width: 540, height: 'auto', display: 'block' }} />
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD 7 — frames 660–749
+// Logo holds in exact same position. No motion.
+// Amber 1px line draws beneath logo.
+// Tagline appears below amber line — no overlap with logo.
+// ─────────────────────────────────────────────────────────────────────────────
+const Card7: React.FC = () => {
+  const f = useCurrentFrame();
+
+  // Amber line: scaleX 0→1 over 18 frames from relative frame 8
+  const lineF     = Math.max(0, f - 8);
+  const lineScale = interpolate(lineF, [0, 18], [0, 1], { ...CL, easing: E_TEXT });
+
+  // Tagline: fades in 8 frames after line starts
+  const { opacity: tagOp, ty: tagTy } = useTextReveal(f, 16);
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: BG }}>
+      {/* Logo — held completely static at identical position to Card 6 */}
+      <div style={{
+        position: 'absolute',
+        top:      `${LOGO_TOP_PCT}%`,
+        left:     '50%',
+        transform: 'translate(-50%, -50%)',
+        opacity:   1,
+      }}>
+        <Img src={staticFile(PHOTOS.logo)}
+          style={{ width: 540, height: 'auto', display: 'block' }} />
       </div>
 
-      {/* Elements below logo: amber line + tagline, centered */}
-      <div
-        style={{
-          position: 'absolute',
-          top: LOGO_TOP,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 28,
-          paddingTop: 80,
-          width: 820,
-        }}
-      >
-        {/* Amber 1px hairline */}
-        <div
-          style={{
-            width: 220,
-            height: 1,
-            backgroundColor: ACCENT,
-            transform: `scaleX(${lineScale})`,
-            transformOrigin: 'left center',
-          }}
-        />
+      {/* Amber line + tagline — anchored BELOW logo, not at logo center */}
+      {/* Logo center is at 38% of 1920 = 729px. Logo height ≈ 160px. Bottom edge ≈ 809px. */}
+      {/* This container starts at 809px + 40px gap = 849px from top = ~44.2% */}
+      <div style={{
+        position:       'absolute',
+        top:            `calc(${LOGO_TOP_PCT}% + 120px)`,
+        left:           '50%',
+        transform:      'translateX(-50%)',
+        display:        'flex',
+        flexDirection:  'column',
+        alignItems:     'center',
+        gap:            24,
+        width:          820,
+      }}>
+        {/* 1px amber hairline — scaleX 0→1 from left */}
+        <div style={{
+          width:           220,
+          height:          1,
+          backgroundColor: ACCENT,
+          transform:       `scaleX(${lineScale})`,
+          transformOrigin: 'left center',
+          alignSelf:       'center',
+        }} />
 
-        {/* Tagline */}
-        <div
-          style={{
-            fontFamily: INTER,
-            fontWeight: 400,
-            fontSize: 44,
-            lineHeight: 1.25,
-            letterSpacing: 0,
-            color: TEXT,
-            textAlign: 'center',
-            maxWidth: 820,
-            opacity: tagOpacity,
-            transform: `translateY(${tagTy}px)`,
-          }}
-        >
+        {/* Tagline — Inter Regular 44px */}
+        <div style={{
+          fontFamily:          INTER,
+          fontWeight:          400,
+          fontSize:            44,
+          lineHeight:          1.25,
+          letterSpacing:       '0',
+          color:               TEXT,
+          textAlign:           'center',
+          maxWidth:            820,
+          opacity:             tagOp,
+          transform:           `translateY(${tagTy}px)`,
+          WebkitFontSmoothing: 'antialiased',
+        }}>
           Custom homes, commissioned across Greater Sydney.
         </div>
       </div>
@@ -502,86 +377,63 @@ const Card7: React.FC = () => {
   );
 };
 
-// ── Root composition ──────────────────────────────────────────────────────────
-export const LandharPremiumV2: React.FC = () => {
-  const { fps } = useVideoConfig();
+// ─────────────────────────────────────────────────────────────────────────────
+// ROOT COMPOSITION — 750 frames exactly
+// ─────────────────────────────────────────────────────────────────────────────
+export const LandharPremiumV2: React.FC = () => (
+  <AbsoluteFill style={{ backgroundColor: BG }}>
 
-  return (
-    <AbsoluteFill style={{ backgroundColor: BG }}>
+    {/* Card 1: frames 0–89 — image only */}
+    <Sequence from={0} durationInFrames={90}>
+      <Card1 />
+      <Audio src={staticFile(AUDIO.s1)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 1: frames 0–89 ─────────────────────────────────────────────── */}
-      <Sequence from={0} durationInFrames={90}>
-        <Card1 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/01-work.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* Card 2: frames 90–209 — continuous image + text */}
+    <Sequence from={90} durationInFrames={120}>
+      <Card2 />
+      <Audio src={staticFile(AUDIO.s2)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 2: frames 90–209 ───────────────────────────────────────────── */}
-      <Sequence from={90} durationInFrames={120}>
-        <Card2 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/02-standard.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* 8-frame dissolve outgoing layer at Card 2→3 boundary */}
+    <Sequence from={210} durationInFrames={9}>
+      <Card2Frozen />
+    </Sequence>
 
-      {/* ── Card 2→3 dissolve outgoing layer (frames 210–218) ───────────────── */}
-      <Sequence from={210} durationInFrames={9}>
-        <Card2Outgoing />
-      </Sequence>
+    {/* Card 3: frames 210–329 — bathroom detail, 8-frame dissolve in */}
+    <Sequence from={210} durationInFrames={120}>
+      <Card3 />
+      <Audio src={staticFile(AUDIO.s3)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 3: frames 210–329 ──────────────────────────────────────────── */}
-      <Sequence from={210} durationInFrames={120}>
-        <Card3 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/03-detail.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* Card 4: frames 330–449 — chandelier, hard cut, NO TEXT */}
+    <Sequence from={330} durationInFrames={120}>
+      <Card4 />
+      <Audio src={staticFile(AUDIO.s4)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 4: frames 330–449 (hard cut from Card 3) ───────────────────── */}
-      <Sequence from={330} durationInFrames={120}>
-        <Card4 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/04-constant.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* 10-frame dissolve outgoing layer at Card 4→5 boundary */}
+    <Sequence from={450} durationInFrames={11}>
+      <Card4Frozen />
+    </Sequence>
 
-      {/* ── Card 4 outgoing for 10-frame dissolve into Card 5 ───────────────── */}
-      <Sequence from={450} durationInFrames={11}>
-        <Card4Outgoing />
-      </Sequence>
+    {/* Card 5: frames 450–569 — dusk exterior, 10-frame dissolve in */}
+    <Sequence from={450} durationInFrames={120}>
+      <Card5 />
+      <Audio src={staticFile(AUDIO.s5)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 5: frames 450–569 ──────────────────────────────────────────── */}
-      <Sequence from={450} durationInFrames={120}>
-        <Card5 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/05-view.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* Card 6: frames 570–659 — logo reveal on dark */}
+    <Sequence from={570} durationInFrames={90}>
+      <Card6 />
+      <Audio src={staticFile(AUDIO.s6)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 6: frames 570–659 (hard cut to #111110) ────────────────────── */}
-      <Sequence from={570} durationInFrames={90}>
-        <Card6 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/06-brand.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
+    {/* Card 7: frames 660–749 — logo hold + amber line + tagline */}
+    <Sequence from={660} durationInFrames={90}>
+      <Card7 />
+      <Audio src={staticFile(AUDIO.s7)} startFrom={10} />
+    </Sequence>
 
-      {/* ── Card 7: frames 660–749 (same layout, no cut) ────────────────────── */}
-      <Sequence from={660} durationInFrames={90}>
-        <Card7 />
-        <Audio
-          src={staticFile('voiceover/landhar-premium-v2/07-location.mp3')}
-          startFrom={10}
-        />
-      </Sequence>
-
-    </AbsoluteFill>
-  );
-};
+  </AbsoluteFill>
+);
