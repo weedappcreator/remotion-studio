@@ -7,3 +7,4 @@ dist/
 *.wav
 public/audio/*.wav
 public/audio/*.json
+.vercel

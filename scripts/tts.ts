@@ -48,6 +48,34 @@ const SCRIPTS: Record<string, { text: string; filename: string; voiceId: string 
     filename: 'voiceover.mp3',
     text: 'Build faster. Ship production-ready websites in minutes with AI. No design skills needed.',
   },
+  // Light Luxury Magazine — same script, same voice, slightly warmer delivery
+  magazine: {
+    voiceId: 'IKne3meq5aSn9XLyUdCD', // Charlie
+    filename: 'landhar-magazine.mp3',
+    text: [
+      'It begins with the work.',
+      'Every commission is held to one uncompromising standard.',
+      'Every detail considered. Every finish resolved.',
+      'That commitment has always been there.',
+      'Now, the standard comes into view.',
+      'Landhar Homes.',
+      'Custom homes, commissioned across Greater Sydney.',
+    ].join('\n'),
+  },
+  // Luxury Slow Burn — deeper, more intimate, higher stability
+  slowburn: {
+    voiceId: 'JBFqnCBsd6RMkjVDRZzb', // George — warm, calm, editorial gravitas
+    filename: 'landhar-slowburn.mp3',
+    text: [
+      'It begins with the work.',
+      'Every commission is held to one uncompromising standard.',
+      'Every detail considered. Every finish resolved.',
+      'That commitment has always been there.',
+      'Now, the standard comes into view.',
+      'Landhar Homes.',
+      'Custom homes, commissioned across Greater Sydney.',
+    ].join('\n'),
+  },
 };
 
 // ── ElevenLabs TTS ────────────────────────────────────────────────────────────

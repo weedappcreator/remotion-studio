@@ -19,7 +19,10 @@
     "record": "tsx scripts/record-narration.ts voiceover",
     "record:landhar": "tsx scripts/record-narration.ts landhar",
     "tts": "tsx scripts/tts.ts promo",
-    "tts:landhar": "tsx scripts/tts.ts landhar"
+    "tts:landhar": "tsx scripts/tts.ts landhar",
+    "tts:magazine": "tsx scripts/tts.ts magazine",
+    "tts:slowburn": "tsx scripts/tts.ts slowburn",
+    "tts:all": "npm run tts:landhar && npm run tts:magazine && npm run tts:slowburn"
   },
   "keywords": [],
   "author": "",
