@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd preview && npm install --legacy-peer-deps && npm run build",
+  "outputDirectory": "preview/dist",
+  "framework": "vite"
+}
