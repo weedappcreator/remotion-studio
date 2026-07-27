@@ -26,6 +26,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "remotion": "^4.0.499",
-    "typescript": "^7.0.2"
+    "typescript": "5.8.3",
+    "zod": "4.4.3"
   }
 }
